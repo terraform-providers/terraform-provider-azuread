@@ -12,6 +12,7 @@ import (
 	applications "github.com/hashicorp/terraform-provider-azuread/internal/services/applications/client"
 	domains "github.com/hashicorp/terraform-provider-azuread/internal/services/domains/client"
 	groups "github.com/hashicorp/terraform-provider-azuread/internal/services/groups/client"
+	invitations "github.com/hashicorp/terraform-provider-azuread/internal/services/invitations/client"
 	serviceprincipals "github.com/hashicorp/terraform-provider-azuread/internal/services/serviceprincipals/client"
 	users "github.com/hashicorp/terraform-provider-azuread/internal/services/users/client"
 )
@@ -34,6 +35,7 @@ type Client struct {
 	Applications      *applications.Client
 	Domains           *domains.Client
 	Groups            *groups.Client
+	Invitations       *invitations.Client
 	ServicePrincipals *serviceprincipals.Client
 	Users             *users.Client
 }
@@ -45,6 +47,7 @@ func (client *Client) build(ctx context.Context, o *common.ClientOptions) error 
 	client.Applications = applications.NewClient(o)
 	client.Domains = domains.NewClient(o)
 	client.Groups = groups.NewClient(o)
+	client.Invitations = invitations.NewClient(o)
 	client.ServicePrincipals = serviceprincipals.NewClient(o)
 	client.Users = users.NewClient(o)
 
