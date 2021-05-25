@@ -26,16 +26,41 @@ func TestAccInvitation_basic(t *testing.T) {
 			Config: r.basic(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("id").Exists(),
+				check.That(data.ResourceName).Key("user_id").Exists(),
+				check.That(data.ResourceName).Key("redeem_url").Exists(),
+				check.That(data.ResourceName).Key("user_email_address").HasValue(fmt.Sprintf("test-user-%s@test.com", data.RandomString)),
+				check.That(data.ResourceName).Key("redirect_url").HasValue("https://portal.azure.com"),
 			),
 		},
-		data.ImportStep(),
+	})
+}
+
+func TestAccInvitation_complete(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_invitation", "test")
+	r := InvitationResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.complete(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("id").Exists(),
+				check.That(data.ResourceName).Key("user_id").Exists(),
+				check.That(data.ResourceName).Key("redeem_url").Exists(),
+				check.That(data.ResourceName).Key("user_email_address").HasValue(fmt.Sprintf("test-user-%s@test.com", data.RandomString)),
+				check.That(data.ResourceName).Key("redirect_url").HasValue("https://portal.azure.com"),
+				check.That(data.ResourceName).Key("user_display_name").HasValue("Test user"),
+				check.That(data.ResourceName).Key("send_invitation_message").HasValue("true"),
+			),
+		},
 	})
 }
 
 func (r InvitationResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
 	var id *string
 
-	userID := state.Attributes["invited_user_id"]
+	userID := state.Attributes["user_id"]
 
 	user, status, err := clients.Users.MsClient.Get(ctx, userID)
 	if err != nil {
@@ -46,14 +71,33 @@ func (r InvitationResource) Exists(ctx context.Context, clients *clients.Client,
 	}
 	id = user.ID
 
-	return utils.Bool(id != nil && *id == state.ID), nil
+	return utils.Bool(id != nil && *id == userID), nil
 }
 
 func (InvitationResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_invitation" "test" {
-	invited_user_email_address = "test-user-%s@test.com"
-	invite_redirect_url        = "https://portal.azure.com"
+	user_email_address = "test-user-%s@test.com"
+	redirect_url       = "https://portal.azure.com"
 }
 `, data.RandomString)
+}
+
+func (InvitationResource) complete(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azuread_invitation" "test" {
+	user_email_address = "test-user-%s@test.com"
+	redirect_url       = "https://portal.azure.com"
+
+	user_display_name = "Test user"
+
+	send_invitation_message = true
+
+	user_message_info {
+		cc_recipients           = ["test-user-%s@test.com"]
+		customized_message_body = "Hello there! You are invited to join my Azure tenant."
+		message_language        = "en-US"
+	}
+}
+`, data.RandomString, data.RandomString)
 }

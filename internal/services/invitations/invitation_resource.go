@@ -27,27 +27,38 @@ func invitationResource() *schema.Resource {
 		}),
 
 		Schema: map[string]*schema.Schema{
-			"invited_user_display_name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: validate.NoEmptyStrings,
+			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
-			"invited_user_email_address": {
+			"user_email_address": {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
 				ValidateDiagFunc: validate.StringIsEmailAddress,
 			},
-			"invited_user_id": {
+			"redirect_url": {
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: validate.IsHTTPOrHTTPSURL,
+			},
+			"user_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"invited_user_message_info": {
-				Type:     schema.TypeList,
-				Optional: true,
-				ForceNew: true,
-				MaxItems: 1,
+			"user_display_name": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: validate.NoEmptyStrings,
+			},
+			"user_message_info": {
+				Type:         schema.TypeList,
+				Optional:     true,
+				ForceNew:     true,
+				MaxItems:     1,
+				RequiredWith: []string{"send_invitation_message"},
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"cc_recipients": {
@@ -61,24 +72,21 @@ func invitationResource() *schema.Resource {
 							Type:             schema.TypeString,
 							Optional:         true,
 							ValidateDiagFunc: validate.NoEmptyStrings,
-							ConflictsWith:    []string{"invited_user_message_info.message_language"},
 						},
 						"message_language": {
 							Type:             schema.TypeString,
 							Optional:         true,
 							ValidateDiagFunc: validate.NoEmptyStrings,
-							ConflictsWith:    []string{"invited_user_message_info.customized_message_body"},
 						},
 					},
 				},
 			},
-			"invite_redirect_url": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: validate.IsHTTPOrHTTPSURL,
+			"send_invitation_message": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				ForceNew: true,
 			},
-			"invite_redeem_url": {
+			"redeem_url": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
