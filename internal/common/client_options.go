@@ -35,9 +35,11 @@ func (o ClientOptions) ConfigureClient(c *msgraph.Client, ar *autorest.Client) {
 		c.UserAgent = o.userAgent(c.UserAgent)
 	}
 
-	ar.Authorizer = o.AadGraphAuthorizer
-	ar.Sender = sender.BuildSender("AzureAD")
-	ar.UserAgent = o.userAgent(ar.UserAgent)
+	if ar != nil {
+		ar.Authorizer = o.AadGraphAuthorizer
+		ar.Sender = sender.BuildSender("AzureAD")
+		ar.UserAgent = o.userAgent(ar.UserAgent)
+	}
 }
 
 func (o ClientOptions) userAgent(sdkUserAgent string) (userAgent string) {

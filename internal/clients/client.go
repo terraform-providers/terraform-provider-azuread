@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/common"
 	applications "github.com/hashicorp/terraform-provider-azuread/internal/services/applications/client"
+	conditionalAccessPolicies "github.com/hashicorp/terraform-provider-azuread/internal/services/conditionalAccessPolicies/client"
 	domains "github.com/hashicorp/terraform-provider-azuread/internal/services/domains/client"
 	groups "github.com/hashicorp/terraform-provider-azuread/internal/services/groups/client"
 	serviceprincipals "github.com/hashicorp/terraform-provider-azuread/internal/services/serviceprincipals/client"
@@ -31,11 +32,12 @@ type Client struct {
 
 	StopContext context.Context
 
-	Applications      *applications.Client
-	Domains           *domains.Client
-	Groups            *groups.Client
-	ServicePrincipals *serviceprincipals.Client
-	Users             *users.Client
+	Applications              *applications.Client
+	ConditionalAccessPolicies *conditionalAccessPolicies.Client
+	Domains                   *domains.Client
+	Groups                    *groups.Client
+	ServicePrincipals         *serviceprincipals.Client
+	Users                     *users.Client
 }
 
 func (client *Client) build(ctx context.Context, o *common.ClientOptions) error { //nolint:unparam
@@ -43,6 +45,7 @@ func (client *Client) build(ctx context.Context, o *common.ClientOptions) error 
 	client.StopContext = ctx
 
 	client.Applications = applications.NewClient(o)
+	client.ConditionalAccessPolicies = conditionalAccessPolicies.NewClient(o)
 	client.Domains = domains.NewClient(o)
 	client.Groups = groups.NewClient(o)
 	client.ServicePrincipals = serviceprincipals.NewClient(o)
