@@ -468,7 +468,7 @@ func applicationResource() *schema.Resource {
 						},
 
 						"redirect_uris": {
-							Description: "The URL that will be used by Microsoft's authorization service to sign out a user using front-channel, back-channel or SAML logout protocols",
+							Description: "The URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent",
 							Type:        schema.TypeSet,
 							Optional:    true,
 							MaxItems:    256,
