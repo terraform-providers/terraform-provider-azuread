@@ -40,10 +40,4 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-Passwords can be imported using the object ID of the associated service principal and the key ID of the password credential, e.g.
-
-```shell
-terraform import azuread_service_principal_password.test 00000000-0000-0000-0000-000000000000/password/11111111-1111-1111-1111-111111111111
-```
-
--> **NOTE:** This ID format is unique to Terraform and is composed of the service principal's object ID, the string "password" and the password's key ID in the format `{ServicePrincipalObjectId}/password/{PasswordKeyId}`.
+This resource does not support importing.
