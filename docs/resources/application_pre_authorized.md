@@ -2,7 +2,7 @@
 subcategory: "Applications"
 ---
 
-# Resource: azuread_pre_authorized_application
+# Resource: azuread_application_pre_authorized
 
 Manages client applications that are pre-authorized with the specified permissions to access an application's APIs without requiring user consent.
 
@@ -39,7 +39,7 @@ resource "azuread_application" "authorizer" {
   }
 }
 
-resource "azuread_pre_authorized_application" "example" {
+resource "azuread_application_pre_authorized" "example" {
   application_object_id = azuread_application.authorizer.object_id
   authorized_app_id     = azuread_application.authorized.application_id
   permission_ids        = ["ced9c4c3-c273-4f0f-ac71-a20377b90f9c", "2d5e07ca-664d-4d9b-ad61-ec07fd215213"]
@@ -65,7 +65,7 @@ In addition to all arguments above, the following attributes are exported:
 Pre-authorized applications can be imported using the object ID of the authorizing application and the application ID of the application being authorized, e.g.
 
 ```shell
-terraform import azuread_pre_authorized_application.example 00000000-0000-0000-0000-000000000000/preAuthorizedApplication/11111111-1111-1111-1111-111111111111
+terraform import azuread_application_pre_authorized.example 00000000-0000-0000-0000-000000000000/preAuthorizedApplication/11111111-1111-1111-1111-111111111111
 ```
 
 -> **NOTE:** This ID format is unique to Terraform and is composed of the authorizing application's object ID, the string "preAuthorizedApplication" and the authorized application's application ID (client ID) in the format `{ObjectId}/preAuthorizedApplication/{ApplicationId}`.

@@ -20,12 +20,12 @@ import (
 	"github.com/hashicorp/terraform-provider-azuread/internal/validate"
 )
 
-func preAuthorizedApplicationResource() *schema.Resource {
+func applicationPreAuthorizedResource() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: preAuthorizedApplicationResourceCreate,
-		ReadContext:   preAuthorizedApplicationResourceRead,
-		UpdateContext: preAuthorizedApplicationResourceUpdate,
-		DeleteContext: preAuthorizedApplicationResourceDelete,
+		CreateContext: applicationPreAuthorizedResourceCreate,
+		ReadContext:   applicationPreAuthorizedResourceRead,
+		UpdateContext: applicationPreAuthorizedResourceUpdate,
+		DeleteContext: applicationPreAuthorizedResourceDelete,
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(5 * time.Minute),
@@ -35,7 +35,7 @@ func preAuthorizedApplicationResource() *schema.Resource {
 		},
 
 		Importer: tf.ValidateResourceIDPriorToImport(func(id string) error {
-			_, err := parse.PreAuthorizedApplicationID(id)
+			_, err := parse.ApplicationPreAuthorizedID(id)
 			return err
 		}),
 
@@ -69,9 +69,9 @@ func preAuthorizedApplicationResource() *schema.Resource {
 	}
 }
 
-func preAuthorizedApplicationResourceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func applicationPreAuthorizedResourceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*clients.Client).Applications.ApplicationsClient
-	id := parse.NewPreAuthorizedApplicationID(d.Get("application_object_id").(string), d.Get("authorized_app_id").(string))
+	id := parse.NewApplicationPreAuthorizedID(d.Get("application_object_id").(string), d.Get("authorized_app_id").(string))
 
 	tf.LockByName(applicationResourceName, id.ObjectId)
 	defer tf.UnlockByName(applicationResourceName, id.ObjectId)
@@ -91,7 +91,7 @@ func preAuthorizedApplicationResourceCreate(ctx context.Context, d *schema.Resou
 	if app.Api != nil && app.Api.PreAuthorizedApplications != nil {
 		for _, a := range *app.Api.PreAuthorizedApplications {
 			if a.AppId != nil && strings.EqualFold(*a.AppId, id.AppId) {
-				return tf.ImportAsExistsDiag("azuread_pre_authorized_application", id.String())
+				return tf.ImportAsExistsDiag("azuread_application_pre_authorized", id.String())
 			}
 			newPreAuthorizedApps = append(newPreAuthorizedApps, a)
 		}
@@ -115,12 +115,12 @@ func preAuthorizedApplicationResourceCreate(ctx context.Context, d *schema.Resou
 
 	d.SetId(id.String())
 
-	return preAuthorizedApplicationResourceRead(ctx, d, meta)
+	return applicationPreAuthorizedResourceRead(ctx, d, meta)
 }
 
-func preAuthorizedApplicationResourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func applicationPreAuthorizedResourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*clients.Client).Applications.ApplicationsClient
-	id, err := parse.PreAuthorizedApplicationID(d.Id())
+	id, err := parse.ApplicationPreAuthorizedID(d.Id())
 	if err != nil {
 		return tf.ErrorDiagPathF(err, "id", "Parsing pre-authorized application ID %q", d.Id())
 	}
@@ -166,12 +166,12 @@ func preAuthorizedApplicationResourceUpdate(ctx context.Context, d *schema.Resou
 		return tf.ErrorDiagF(err, "Updating pre-authorized application %q for application with object ID %q", id.AppId, id.ObjectId)
 	}
 
-	return preAuthorizedApplicationResourceRead(ctx, d, meta)
+	return applicationPreAuthorizedResourceRead(ctx, d, meta)
 }
 
-func preAuthorizedApplicationResourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func applicationPreAuthorizedResourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*clients.Client).Applications.ApplicationsClient
-	id, err := parse.PreAuthorizedApplicationID(d.Id())
+	id, err := parse.ApplicationPreAuthorizedID(d.Id())
 	if err != nil {
 		return tf.ErrorDiagPathF(err, "id", "Parsing pre-authorized application ID %q", d.Id())
 	}
@@ -212,9 +212,9 @@ func preAuthorizedApplicationResourceRead(ctx context.Context, d *schema.Resourc
 	return nil
 }
 
-func preAuthorizedApplicationResourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func applicationPreAuthorizedResourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*clients.Client).Applications.ApplicationsClient
-	id, err := parse.PreAuthorizedApplicationID(d.Id())
+	id, err := parse.ApplicationPreAuthorizedID(d.Id())
 	if err != nil {
 		return tf.ErrorDiagPathF(err, "id", "Parsing pre-authorized application ID %q", d.Id())
 	}

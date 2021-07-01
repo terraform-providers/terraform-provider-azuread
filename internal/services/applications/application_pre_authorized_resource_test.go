@@ -17,11 +17,11 @@ import (
 	"github.com/hashicorp/terraform-provider-azuread/internal/utils"
 )
 
-type PreAuthorizedApplicationResource struct{}
+type ApplicationPreAuthorizedResource struct{}
 
-func TestAccPreAuthorizedApplication_basic(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azuread_pre_authorized_application", "test")
-	r := PreAuthorizedApplicationResource{}
+func TestAccApplicationPreAuthorized_basic(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_application_pre_authorized", "test")
+	r := ApplicationPreAuthorizedResource{}
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
@@ -36,9 +36,9 @@ func TestAccPreAuthorizedApplication_basic(t *testing.T) {
 	})
 }
 
-func TestAccPreAuthorizedApplication_requiresImport(t *testing.T) {
-	data := acceptance.BuildTestData(t, "azuread_pre_authorized_application", "test")
-	r := PreAuthorizedApplicationResource{}
+func TestAccApplicationPreAuthorized_requiresImport(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_application_pre_authorized", "test")
+	r := ApplicationPreAuthorizedResource{}
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
@@ -51,11 +51,11 @@ func TestAccPreAuthorizedApplication_requiresImport(t *testing.T) {
 	})
 }
 
-func (PreAuthorizedApplicationResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
+func (ApplicationPreAuthorizedResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
 	client := clients.Applications.ApplicationsClient
 	client.BaseClient.DisableRetries = true
 
-	id, err := parse.PreAuthorizedApplicationID(state.ID)
+	id, err := parse.ApplicationPreAuthorizedID(state.ID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing Pre-Authorized Application ID: %v", err)
 	}
@@ -79,7 +79,7 @@ func (PreAuthorizedApplicationResource) Exists(ctx context.Context, clients *cli
 	return nil, fmt.Errorf("Pre-Authorized Application %q was not found for Application %q", id.AppId, id.ObjectId)
 }
 
-func (PreAuthorizedApplicationResource) basic(data acceptance.TestData) string {
+func (ApplicationPreAuthorizedResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_application" "authorized" {
   display_name = "acctestApp-authorized-%[1]d"
@@ -111,7 +111,7 @@ resource "azuread_application" "authorizer" {
   }
 }
 
-resource "azuread_pre_authorized_application" "test" {
+resource "azuread_application_pre_authorized" "test" {
   application_object_id = azuread_application.authorizer.object_id
   authorized_app_id     = azuread_application.authorized.application_id
   permission_ids        = ["%[2]s", "%[3]s"]
@@ -119,13 +119,13 @@ resource "azuread_pre_authorized_application" "test" {
 `, data.RandomInteger, data.UUID(), data.UUID())
 }
 
-func (r PreAuthorizedApplicationResource) requiresImport(data acceptance.TestData) string {
+func (r ApplicationPreAuthorizedResource) requiresImport(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "azuread_pre_authorized_application" "import" {
-  application_object_id = azuread_pre_authorized_application.test.application_object_id
-  authorized_app_id     = azuread_pre_authorized_application.test.authorized_app_id
+resource "azuread_application_pre_authorized" "import" {
+  application_object_id = azuread_application_pre_authorized.test.application_object_id
+  authorized_app_id     = azuread_application_pre_authorized.test.authorized_app_id
   permission_ids        = ["%[2]s"]
 }
 `, r.basic(data), data.UUID())
