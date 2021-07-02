@@ -1,3 +1,85 @@
+## 2.0.0 (Unreleased)
+
+NOTES:
+
+* **Major Version:** This is a major version upgrade which contains breaking changes. Please read the [Upgrade Guide](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/microsoft-graph) before upgrading, which details all the known breaking changes that practitioners should be aware of.
+* **Microsoft Graph:** The upstream API for Azure Active Directory is now Microsoft Graph, and the deprecated Azure Active Directory Graph API is no longer supported.
+
+IMPROVEMENTS:
+
+* `data.azuread_application` - the `implicit_grant` block now supports the `id_token_issuance_enabled` attribute [GH-461]
+* `data.azuread_application` - the `optional_claims` block now supports the `saml2_token` attribute [GH-461]
+* `data.azuread_domains` - export the `admin_managed`, `root` and `supported_services` attributes for each domain [GH-461]
+* `data.azuread_domains` - support the `admin_managed`, `only_root` and `supports_services` properties [GH-461]
+* `azuread_application` - the `implicit_grant` block now supports the `id_token_issuance_enabled` property [GH-461]
+* `azuread_application` - the `optional_claims` block now supports the `saml2_token` block [GH-461]
+* `azuread_application` - the `sign_in_audience` property now supports the `AzureADandPersonalMicrosoftAccount` and `PersonalMicrosoftAccount` values [GH-461]
+* `azuread_group` - support for creating mail-enabled groups [GH-461]
+* `azuread_group` - support for creating Microsoft 365 groups [GH-461]
+* `azuread_group` - support for updating groups without recreating them [GH-461]
+
+BUG FIXES:
+
+* `azuread_application` - resolved an issue where `identifier_uris` could be reordered and cause a persistent diff [GH-461]
+* `azuread_application` - the `identifier_uris` property can now be set for all applications regardless of target platform [GH-461]
+* `azuread_application` - fixed a bug where app roles could be duplicated or left in a disabled state [GH-461]
+* `azuread_application` - fixed a bug where app roles could not be removed from an application [GH-461]
+* `azuread_application` - fixed a bug where the `enabled` property of app roles could be ignored [GH-461]
+* `azuread_application` - fixed a bug where the `id` property of app roles could be undesirably changed [GH-461]
+* `azuread_application` - resolved an issue where the default scope could not be removed from an application [GH-461]
+* `azuread_application` - resolved an issue where multiple `group_membership_claims` could not be specified [GH-461]
+* `azuread_application_password` - the `display_name` / `description` properties are no longer stored using the `customKeyIdentifier` API field, lifting the 32 byte limit [GH-461]
+* `azuread_user` - resolved an issue where importing users would inadvertently reset their password [GH-461]
+
+BREAKING CHANGES:
+
+* `data.azuread_domains` - the `is_` prefix has been dropped from all exported attributes [GH-461]
+* `data.azuread_application` - the deprecated property `name` has been removed [GH-461]
+* `data.azuread_application` - the deprecated attribute `available_to_other_tenants` has been removed [GH-461]
+* `data.azuread_application` - the `group_membership_claims` attribute has changed from a string to a list of strings [GH-461]
+* `data.azuread_application` - the deprecated attribute `homepage` has been removed [GH-461]
+* `data.azuread_application` - the deprecated attribute `logout_url` has been removed [GH-461]
+* `data.azuread_application` - the deprecated attribute `oauth2_allow_implicit_flow` has been removed [GH-461]
+* `data.azuread_application` - the deprecated attribute `oauth2_permissions` has been removed [GH-461]
+* `data.azuread_application` - the `public_client` attribute is now a block containing public client settings [GH-461]
+* `data.azuread_application` - the deprecated attribute `reply_urls` has been removed [GH-461]
+* `data.azuread_application` - the deprecated attribute `type` has been removed [GH-461]
+* `data.azuread_group` - the deprecated property `name` has been removed [GH-461]
+* `data.azuread_groups` - the deprecated property `names` has been removed [GH-461]
+* `data.azuread_service_principal` - the deprecated attribute `oauth2_permissions` has been removed [GH-461]
+* `data.azuread_user` - the deprecated attribute `immutable_id` has been removed [GH-461]
+* `data.azuread_user` - the deprecated attribute `physical_delivery_office_name` has been removed [GH-461]
+* `data.azuread_user` - the deprecated attribute `mobile` has been removed [GH-461]
+* `data.azuread_users` - the deprecated attribute `immutable_id` in the `users` block has been removed [GH-461]
+* `azuread_application` - the deprecated property `name` has been removed [GH-461]
+* `azuread_application` - the `api` block is no longer Computed, omitting this block will cause it to be removed from your configuration [GH-461]
+* `azuread_application` - the `app_role` block is no longer Computed, omitting this block will cause it to be removed from your configuration [GH-461]
+* `azuread_application` - the `id` property in the `app_role` block is now Required [GH-461]
+* `azuread_application` - the deprecated property `available_to_other_tenants` has been removed [GH-461]
+* `azuread_application` - the `fallback_public_client_enabled` property is no longer Computed, omitting this property will cause the default value to be applied [GH-461]
+* `azuread_application` - the `group_membership_claims` property has changed from a string to a set of strings [GH-461]
+* `azuread_application` - the deprecated property `homepage` has been removed [GH-461]
+* `azuread_application` - the `identifier_uris` property is no longer Computed, omitting this property will cause it to be removed from your configuration [GH-461]
+* `azuread_application` - the deprecated property `logout_url` has been removed [GH-461]
+* `azuread_application` - the deprecated property `oauth2_allow_implicit_flow` has been removed [GH-461]
+* `azuread_application` - the `oauth2_permission_scope` block is no longer Computed, omitting this block will cause it to be removed from your configuration [GH-461]
+* `azuread_application` - the deprecated block `oauth2_permissions` has been removed [GH-461]
+* `azuread_application` - the `owners` property is no longer Computed, omitting this property will cause it to be removed from your configuration [GH-461]
+* `azuread_application` - the `public_client` property is now a block containing public client settings [GH-461]
+* `azuread_application` - the deprecated property `reply_urls` has been removed [GH-461]
+* `azuread_application` - the `sign_in_audience` property is no longer Computed, omitting this property will cause the default value to be applied [GH-461]
+* `azuread_application` - the deprecated property `type` has been removed [GH-461]
+* `azuread_application` - the `web` block is no longer Computed, omitting this block will cause it to be removed from your configuration [GH-461]
+* `azuread_application_password` - the `key_id` and `value` properties are now Computed, due to API changes it is no longer possible to specify these values [GH-461]
+* `azuread_group` - the deprecated property `name` has been removed [GH-461]
+* `azuread_group` - at least one of the `mail_enabled` or `security_enabled` properties are now Required [GH-461]
+* `azuread_service_principal` - the deprecated attribute `oauth2_permissions` has been removed [GH-461]
+* `azuread_service_principal_password` - the `key_id` and `value` properties are now Computed, due to API changes it is no longer possible to specify these values [GH-461]
+* `azuread_service_principal_password` - the `start_date` and `end_date` properties are now Computed, due to an API issue it is no longer possible to specify these values [GH-461]
+* `azuread_user` - the deprecated property `immutable_id` has been removed [GH-461]
+* `azuread_user` - the deprecated property `physical_delivery_office_name` has been removed [GH-461]
+* `azuread_user` - the deprecated property `mobile` has been removed [GH-461]
+
 ## 1.6.0 (June 24, 2021)
 
 DEPRECATIONS:
