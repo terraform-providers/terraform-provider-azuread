@@ -5,6 +5,10 @@ NOTES:
 * **Major Version:** This is a major version upgrade which contains breaking changes. Please read the [Upgrade Guide](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/guides/microsoft-graph) before upgrading, which details all the known breaking changes that practitioners should be aware of.
 * **Microsoft Graph:** The upstream API for Azure Active Directory is now Microsoft Graph, and the deprecated Azure Active Directory Graph API is no longer supported.
 
+FEATURES:
+
+* **New Resource** `application_pre_authorized` [GH-472]
+
 IMPROVEMENTS:
 
 * `data.azuread_application` - the `implicit_grant` block now supports the `id_token_issuance_enabled` attribute [GH-461]
