@@ -31,6 +31,7 @@ output "azure_ad_object_id" {
 The following attributes are exported:
 
 * `api` - An `api` block as documented below.
+* `app_role_ids` - A mapping of app role values to app role IDs, intended to be useful when referencing app roles in other resources in your configuration.
 * `app_roles` - A collection of `app_role` blocks as documented below. For more information see [official documentation on Application Roles](https://docs.microsoft.com/en-us/azure/architecture/multitenant-identity/app-roles).
 * `application_id` - The Application ID (also called Client ID).
 * `device_only_auth_enabled` - Specifies whether this application supports device authentication without a user.
@@ -41,6 +42,7 @@ The following attributes are exported:
 * `identifier_uris` - A list of user-defined URI(s) that uniquely identify a Web application within it's Azure AD tenant, or within a verified custom domain if the application is multi-tenant.
 * `logo_url` - CDN URL to the application's logo.
 * `marketing_url` - URL of the application's marketing page.
+* `oauth2_permission_scope_ids` - A mapping of OAuth2.0 permission scope values to scope IDs, intended to be useful when referencing permission scopes in other resources in your configuration.
 * `oauth2_post_response_required` - Specifies whether, as part of OAuth 2.0 token requests, Azure AD allows POST requests, as opposed to GET requests. When `false`, only GET requests are allowed.
 * `object_id` - The application's object ID.
 * `optional_claims` - An `optional_claims` block as documented below.

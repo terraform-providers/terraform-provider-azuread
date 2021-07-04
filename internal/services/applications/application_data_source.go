@@ -78,7 +78,6 @@ func applicationDataSource() *schema.Resource {
 							Computed:    true,
 						},
 
-						// TODO: v2.0 also consider another computed typemap attribute `oauth2_permission_scope_ids` for easier consumption
 						"oauth2_permission_scopes": {
 							Description: "List of OAuth2 permission scopes published by the application",
 							Type:        schema.TypeList,
@@ -145,7 +144,6 @@ func applicationDataSource() *schema.Resource {
 				},
 			},
 
-			// TODO: v2.0 consider another computed typemap attribute `app_role_ids` for easier consumption
 			"app_roles": {
 				Description: "List of app roles published by the application",
 				Type:        schema.TypeList,
@@ -194,6 +192,15 @@ func applicationDataSource() *schema.Resource {
 				},
 			},
 
+			"app_role_ids": {
+				Description: "Mapping of app role names to UUIDs",
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+
 			"device_only_auth_enabled": {
 				Description: "Specifies whether this application supports device authentication without a user.",
 				Type:        schema.TypeBool,
@@ -234,6 +241,15 @@ func applicationDataSource() *schema.Resource {
 				Description: "URL of the application's marketing page",
 				Type:        schema.TypeString,
 				Computed:    true,
+			},
+
+			"oauth2_permission_scope_ids": {
+				Description: "Mapping of OAuth2.0 permission scope names to UUIDs",
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 
 			"oauth2_post_response_required": {
@@ -485,8 +501,9 @@ func applicationDataSourceRead(ctx context.Context, d *schema.ResourceData, meta
 
 	d.SetId(*app.ID)
 
-	tf.Set(d, "api", flattenApplicationApi(app.Api, true, true))
+	tf.Set(d, "api", flattenApplicationApi(app.Api, true))
 	tf.Set(d, "app_roles", flattenApplicationAppRoles(app.AppRoles))
+	tf.Set(d, "app_role_ids", flattenApplicationAppRoleIDs(app.AppRoles))
 	tf.Set(d, "application_id", app.AppId)
 	tf.Set(d, "device_only_auth_enabled", app.IsDeviceOnlyAuthSupported)
 	tf.Set(d, "disabled_by_microsoft", fmt.Sprintf("%v", app.DisabledByMicrosoftStatus))
@@ -497,12 +514,16 @@ func applicationDataSourceRead(ctx context.Context, d *schema.ResourceData, meta
 	tf.Set(d, "oauth2_post_response_required", app.Oauth2RequirePostResponse)
 	tf.Set(d, "object_id", app.ID)
 	tf.Set(d, "optional_claims", flattenApplicationOptionalClaims(app.OptionalClaims))
-	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient, d.Get("public_client.#").(int) > 0))
+	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient))
 	tf.Set(d, "publisher_domain", app.PublisherDomain)
 	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
 	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
-	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa, d.Get("single_page_application.#").(int) > 0))
-	tf.Set(d, "web", flattenApplicationWeb(app.Web, true, true))
+	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa))
+	tf.Set(d, "web", flattenApplicationWeb(app.Web))
+
+	if app.Api != nil {
+		tf.Set(d, "oauth2_permission_scope_ids", flattenApplicationOAuth2PermissionScopeIDs(app.Api.OAuth2PermissionScopes))
+	}
 
 	if app.Info != nil {
 		tf.Set(d, "logo_url", app.Info.LogoUrl)

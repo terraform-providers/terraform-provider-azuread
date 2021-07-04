@@ -58,9 +58,10 @@ func applicationResource() *schema.Resource {
 			},
 
 			"api": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: applicationDiffSuppress,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"known_client_applications": {
@@ -79,7 +80,6 @@ func applicationResource() *schema.Resource {
 							Optional:    true,
 						},
 
-						// TODO: v2.0 also consider another computed typemap attribute `oauth2_permission_scope_ids` for easier consumption
 						"oauth2_permission_scope": {
 							Description: "One or more `oauth2_permission_scope` blocks to describe delegated permissions exposed by the web API represented by this application",
 							Type:        schema.TypeSet,
@@ -178,7 +178,6 @@ func applicationResource() *schema.Resource {
 				},
 			},
 
-			// TODO: v2.0 consider another computed typemap attribute `app_role_ids` for easier consumption
 			"app_role": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -238,6 +237,15 @@ func applicationResource() *schema.Resource {
 				},
 			},
 
+			"app_role_ids": {
+				Description: "Mapping of app role names to UUIDs",
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+
 			"device_only_auth_enabled": {
 				Description: "Specifies whether this application supports device authentication without a user.",
 				Type:        schema.TypeBool,
@@ -282,6 +290,16 @@ func applicationResource() *schema.Resource {
 				Optional:    true,
 			},
 
+			// This is a top level attribute because d.SetNewComputed() doesn't work inside a block
+			"oauth2_permission_scope_ids": {
+				Description: "Mapping of OAuth2.0 permission scope names to UUIDs",
+				Type:        schema.TypeMap,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+
 			"oauth2_post_response_required": {
 				Description: "Specifies whether, as part of OAuth 2.0 token requests, Azure AD allows POST requests, as opposed to GET requests.",
 				Type:        schema.TypeBool,
@@ -289,9 +307,10 @@ func applicationResource() *schema.Resource {
 			},
 
 			"optional_claims": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: applicationDiffSuppress,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"access_token": schemaOptionalClaims(),
@@ -318,9 +337,10 @@ func applicationResource() *schema.Resource {
 			},
 
 			"public_client": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: applicationDiffSuppress,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"redirect_uris": {
@@ -394,9 +414,10 @@ func applicationResource() *schema.Resource {
 			},
 
 			"single_page_application": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: applicationDiffSuppress,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"redirect_uris": {
@@ -426,9 +447,10 @@ func applicationResource() *schema.Resource {
 			},
 
 			"web": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Type:             schema.TypeList,
+				Optional:         true,
+				MaxItems:         1,
+				DiffSuppressFunc: applicationDiffSuppress,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"homepage_url": {
@@ -457,9 +479,10 @@ func applicationResource() *schema.Resource {
 						},
 
 						"implicit_grant": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MaxItems: 1,
+							Type:             schema.TypeList,
+							Optional:         true,
+							MaxItems:         1,
+							DiffSuppressFunc: applicationDiffSuppress,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"access_token_issuance_enabled": {
@@ -542,8 +565,17 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 		}
 	}
 
+	// Validate roles and scopes to check for duplicate IDs or values
 	if err := applicationValidateRolesScopes(diff.Get("app_role").(*schema.Set).List(), diff.Get("api.0.oauth2_permission_scope").(*schema.Set).List()); err != nil {
-		return fmt.Errorf("checking for duplicate app role / oauth2_permissions values: %v", err)
+		return fmt.Errorf("checking for duplicate app roles / OAuth2.0 permission scopes: %v", err)
+	}
+
+	// If app roles or permission scopes have changed, the corresponding maps indexed by value will also change
+	if diff.HasChange("app_role") {
+		diff.SetNewComputed("app_role_ids")
+	}
+	if diff.HasChange("api.0.oauth2_permission_scope") {
+		diff.SetNewComputed("oauth2_permission_scope_ids")
 	}
 
 	// The following validation is taken from https://docs.microsoft.com/en-gb/azure/active-directory/develop/supported-accounts-validation
@@ -639,6 +671,103 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 	}
 
 	return nil
+}
+
+func applicationDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
+	suppress := false
+
+	switch {
+	case k == "api.#" && old == "1" && new == "0":
+		apiRaw := d.Get("api").([]interface{})
+		if len(apiRaw) == 1 {
+			suppress = true
+			api := apiRaw[0].(map[string]interface{})
+			if v, ok := api["known_client_applications"]; ok && len(v.(*schema.Set).List()) > 0 {
+				suppress = false
+			}
+			if v, ok := api["mapped_claims_enabled"]; ok && v.(bool) {
+				suppress = false
+			}
+			if v, ok := api["oauth2_permission_scope"]; ok && len(v.(*schema.Set).List()) > 0 {
+				suppress = false
+			}
+			if v, ok := api["requested_access_token_version"]; ok && v.(int) > 1 {
+				suppress = false
+			}
+		}
+
+	case k == "optional_claims.#" && old == "1" && new == "0":
+		optionalClaimsRaw := d.Get("optional_claims").([]interface{})
+		if len(optionalClaimsRaw) == 1 {
+			suppress = true
+			optionalClaims := optionalClaimsRaw[0].(map[string]interface{})
+			if v, ok := optionalClaims["access_token"]; ok && len(v.([]interface{})) > 0 {
+				suppress = false
+			}
+			if v, ok := optionalClaims["id_token"]; ok && len(v.([]interface{})) > 0 {
+				suppress = false
+			}
+			if v, ok := optionalClaims["saml2_token"]; ok && len(v.([]interface{})) > 0 {
+				suppress = false
+			}
+		}
+
+	case k == "public_client.#" && old == "1" && new == "0":
+		publicClientRaw := d.Get("public_client").([]interface{})
+		if len(publicClientRaw) == 1 {
+			suppress = true
+			publicClient := publicClientRaw[0].(map[string]interface{})
+			if v, ok := publicClient["redirect_uris"]; ok && len(v.(*schema.Set).List()) > 0 {
+				suppress = false
+			}
+		}
+
+	case k == "single_page_application.#" && old == "1" && new == "0":
+		spaRaw := d.Get("single_page_application").([]interface{})
+		if len(spaRaw) == 1 {
+			suppress = true
+			spa := spaRaw[0].(map[string]interface{})
+			if v, ok := spa["redirect_uris"]; ok && len(v.(*schema.Set).List()) > 0 {
+				suppress = false
+			}
+		}
+
+	case k == "web.#" && old == "1" && new == "0":
+		webRaw := d.Get("web").([]interface{})
+		if len(webRaw) == 1 {
+			suppress = true
+			web := webRaw[0].(map[string]interface{})
+			if v, ok := web["redirect_uris"]; ok && len(v.(*schema.Set).List()) > 0 {
+				suppress = false
+			}
+			if b, ok := web["implicit_grant"]; ok {
+				if implicitGrantRaw := b.([]interface{}); len(implicitGrantRaw) > 0 {
+					implicitGrant := implicitGrantRaw[0].(map[string]interface{})
+					if v, ok := implicitGrant["access_token_issuance_enabled"]; ok && v.(bool) {
+						suppress = false
+					}
+					if v, ok := implicitGrant["id_token_issuance_enabled"]; ok && v.(bool) {
+						suppress = false
+					}
+				}
+			}
+		}
+
+	case k == "web.0.implicit_grant.#" && old == "1" && new == "0":
+		implicitGrantRaw := d.Get("web.0.implicit_grant").([]interface{})
+		if len(implicitGrantRaw) == 1 {
+			suppress = true
+			implicitGrant := implicitGrantRaw[0].(map[string]interface{})
+			if v, ok := implicitGrant["access_token_issuance_enabled"]; ok && v.(bool) {
+				suppress = false
+			}
+			if v, ok := implicitGrant["id_token_issuance_enabled"]; ok && v.(bool) {
+				suppress = false
+			}
+		}
+	}
+
+	return suppress
 }
 
 func applicationResourceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -784,8 +913,9 @@ func applicationResourceRead(ctx context.Context, d *schema.ResourceData, meta i
 		return tf.ErrorDiagPathF(err, "id", "Retrieving Application with object ID %q", d.Id())
 	}
 
-	tf.Set(d, "api", flattenApplicationApi(app.Api, d.Get("api.#").(int) > 0, false))
+	tf.Set(d, "api", flattenApplicationApi(app.Api, false))
 	tf.Set(d, "app_role", flattenApplicationAppRoles(app.AppRoles))
+	tf.Set(d, "app_role_ids", flattenApplicationAppRoleIDs(app.AppRoles))
 	tf.Set(d, "application_id", app.AppId)
 	tf.Set(d, "device_only_auth_enabled", app.IsDeviceOnlyAuthSupported)
 	tf.Set(d, "disabled_by_microsoft", fmt.Sprintf("%v", app.DisabledByMicrosoftStatus))
@@ -796,12 +926,16 @@ func applicationResourceRead(ctx context.Context, d *schema.ResourceData, meta i
 	tf.Set(d, "oauth2_post_response_required", app.Oauth2RequirePostResponse)
 	tf.Set(d, "object_id", app.ID)
 	tf.Set(d, "optional_claims", flattenApplicationOptionalClaims(app.OptionalClaims))
-	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient, d.Get("public_client.#").(int) > 0))
+	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient))
 	tf.Set(d, "publisher_domain", app.PublisherDomain)
 	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
 	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
-	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa, d.Get("single_page_application.#").(int) > 0))
-	tf.Set(d, "web", flattenApplicationWeb(app.Web, d.Get("web.#").(int) > 0, d.Get("web.0.implicit_grant.#").(int) > 0))
+	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa))
+	tf.Set(d, "web", flattenApplicationWeb(app.Web))
+
+	if app.Api != nil {
+		tf.Set(d, "oauth2_permission_scope_ids", flattenApplicationOAuth2PermissionScopeIDs(app.Api.OAuth2PermissionScopes))
+	}
 
 	if app.Info != nil {
 		tf.Set(d, "logo_url", app.Info.LogoUrl)
