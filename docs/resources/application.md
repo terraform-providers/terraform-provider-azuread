@@ -18,6 +18,14 @@ resource "azuread_application" "example" {
   sign_in_audience = "AzureADMultipleOrgs"
 
   api {
+    mapped_claims_enabled          = true
+    requested_access_token_version = 2
+
+    known_client_applications = [
+      azuread_application.known1.application_id,
+      azuread_application.known2.application_id,
+    ]
+
     oauth2_permission_scope {
       admin_consent_description  = "Allow the application to access example on behalf of the signed-in user."
       admin_consent_display_name = "Access example"
@@ -117,18 +125,29 @@ resource "azuread_application" "example" {
 
 The following arguments are supported:
 
-* `api` - (Optional) An `api` block as documented below, which configures API related settings for this Application.
+* `api` - (Optional) An `api` block as documented below, which configures API related settings for this application.
 * `app_role` - (Optional) A collection of `app_role` blocks as documented below. For more information see [official documentation on Application Roles](https://docs.microsoft.com/en-us/azure/architecture/multitenant-identity/app-roles).
+* `device_only_auth_enabled` - (Optional) Specifies whether this application supports device authentication without a user. Defaults to `false`.
 * `display_name` - (Required) The display name for the application.
 * `fallback_public_client_enabled` - (Optional) Specifies whether the application is a public client. Appropriate for apps using token grant flows that don't use a redirect URI. Defaults to `false`.
 * `group_membership_claims` - (Optional) Configures the `groups` claim issued in a user or OAuth 2.0 access token that the app expects. Possible values are `None`, `SecurityGroup`, `DirectoryRole`, `ApplicationGroup` or `All`.
 * `identifier_uris` - (Optional) The user-defined URI(s) that uniquely identify an application within its Azure AD tenant, or within a verified custom domain if the application is multi-tenant.
+* `marketing_url` - (Optional) URL of the application's marketing page.
+* `oauth2_post_response_required` - (Optional) Specifies whether, as part of OAuth 2.0 token requests, Azure AD allows POST requests, as opposed to GET requests. Defaults to `false`, which specifies that only GET requests are allowed.
 * `optional_claims` - (Optional) An `optional_claims` block as documented below.
 * `owners` - (Optional) A list of object IDs of principals that will be granted ownership of the application. It's recommended to specify the object ID of the authenticated principal running Terraform, to ensure sufficient permissions that the application can be subsequently updated.
 * `prevent_duplicate_names` - (Optional) If `true`, will return an error if an existing application is found with the same name. Defaults to `false`.
+* `privacy_statement_url` - (Optional) URL of the application's privacy statement.
+* `public_client` - (Optional) A `public_client` block as documented below, which configures non-web app or non-web API application settings, for example mobile or other public clients such as an installed application running on a desktop device.
 * `required_resource_access` - (Optional) A collection of `required_resource_access` blocks as documented below.
 * `sign_in_audience` - (Optional) The Microsoft account types that are supported for the current application. Must be one of `AzureADMyOrg`, `AzureADMultipleOrgs`, `AzureADandPersonalMicrosoftAccount` or `PersonalMicrosoftAccount`. Defaults to `AzureADMyOrg`.
-* `web` - (Optional) A `web` block as documented below, which configures web related settings for this Application.
+
+~> **Changing `sign_in_audience` for existing applications** When updating an existing application to use a `sign_in_audience` value of `AzureADandPersonalMicrosoftAccount` or `PersonalMicrosoftAccount`, your configuration may no longer be valid. Refer to [official documentation](https://docs.microsoft.com/en-gb/azure/active-directory/develop/supported-accounts-validation) to understand the differences in supported configurations. Where possible, the provider will attempt to validate your configuration and try to avoid applying unsupported settings to your application.
+
+* `single_page_application` - (Optional) A `single_page_application` block as documented below, which configures single-page application (SPA) related settings for this application.
+* `support_url` - (Optional) URL of the application's support page.
+* `terms_of_service_url` - (Optional) URL of the application's terms of service statement.
+* `web` - (Optional) A `web` block as documented below, which configures web related settings for this application.
 
 -> **Application Name Uniqueness** Application names are not unique within Azure Active Directory. Use the `prevent_duplicate_names` argument to check for existing applications if you want to avoid name collisions.
 
@@ -136,7 +155,10 @@ The following arguments are supported:
 
 `api` block supports the following:
 
+* `known_client_applications` - (Optional) A set of application IDs (client IDs), used for bundling consent if you have a solution that contains two parts: a client app and a custom web API app.
+* `mapped_claims_enabled` - (Optional) Allows an application to use claims mapping without specifying a custom signing key. Defaults to `false`.
 * `oauth2_permission_scope` - (Optional) One or more `oauth2_permission_scope` blocks as documented below, to describe delegated permissions exposed by the web API represented by this application.
+* `requested_access_token_version` - (Optional) The access token version expected by this resource. Must be one of `1` or `2`, and must be `2` when `sign_in_audience` is either `AzureADandPersonalMicrosoftAccount` or `PersonalMicrosoftAccount` Defaults to `1`.
 
 ---
 
@@ -193,6 +215,12 @@ The following arguments are supported:
 
 ---
 
+`public_client` block supports the following:
+
+* `redirect_uris` - (Optional) A set of URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent.
+
+---
+
 `required_resource_access` block supports the following:
 
 * `resource_access` - (Required) A collection of `resource_access` blocks as documented below, describing OAuth2.0 permission scopes and app roles that the application requires from the specified resource.
@@ -209,12 +237,18 @@ The following arguments are supported:
 
 ---
 
+`single_page_application` block supports the following:
+
+* `redirect_uris` - (Optional) A set of URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent.
+
+---
+
 `web` block supports the following:
 
 * `homepage_url` - (Optional) Home page or landing page of the application.
 * `implicit_grant` - (Optional) An `implicit_grant` block as documented above.
 * `logout_url` - (Optional) The URL that will be used by Microsoft's authorization service to sign out a user using front-channel, back-channel or SAML logout protocols.
-* `redirect_uris` - (Optional) A list of URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent.
+* `redirect_uris` - (Optional) A set of URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent.
 
 ---
 
@@ -227,8 +261,18 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
+* `app_role_ids` - A mapping of app role values to app role IDs, intended to be useful when referencing app roles in other resources in your configuration.
 * `application_id` - The Application ID (also called Client ID).
+* `disabled_by_microsoft` - Whether Microsoft has disabled the registered application. If the application is disabled, this will be a string indicating the status/reason, e.g. `DisabledDueToViolationOfServicesAgreement`
+* `oauth2_permission_scope_ids` - A mapping of OAuth2.0 permission scope values to scope IDs, intended to be useful when referencing permission scopes in other resources in your configuration.
 * `object_id` - The application's object ID.
+* `publisher_domain` - The verified publisher domain for the application.
+
+---
+
+`info` block exports the following:
+
+* `logo_url` - CDN URL to the application's logo.
 
 ## Import
 

@@ -172,7 +172,7 @@ The deprecated `oauth2_permissions` block has been replaced by the `oauth2_permi
 
 -> In the new `oauth2_permission_scope` block, the `is_enabled` field has been renamed to `enabled` and the `id` field is now **required**. See the [New required UUID fields](#new-required-uuid-fields) section below for more information.
 
-The deprecated field `public_client` has been replaced by the `fallback_public_client_enabled` field and has been removed.
+The deprecated field `public_client` has been replaced by the `fallback_public_client_enabled` field. The new `public_client` block now contains settings for public client applications.
 
 The deprecated field `reply_urls` has been replaced by the `redirect_uris` field in the `web` block and has been removed.
 
@@ -253,7 +253,7 @@ The `id` field in the deprecated `oauth2_permissions` block was previously Compu
 
 In previous version of the provider, many fields were introduced as Optional + Computed fields. This meant that omitting such fields would cause Terraform to ignore them and not attempt to manage them. However, this approach has many side effects including the inability to unset or clear these fields, and sometimes being forced to accept an undesired default value.
 
-To resolve these issues, many of these fields are no longer Computed in version 2.0 of the provider. This means that Terraform will manage these fields and if you do not specify their values in your configuration, they will be unset or set to their zero values. It's also appropriate in some cases for a field to be Computed, particularly where it helps prevent disruption to services or users.
+To resolve these issues, many of these fields are no longer Computed in version 2.0 of the provider. This means that Terraform will manage these fields and if you do not specify their values in your configuration, they will be unset or set to their default or zero values. In some cases it's appropriate for a field to be Computed, particularly where it helps prevent disruption to services or users.
 
 Accordingly, in version 2.0 of the provider the following fields have changed.
 
@@ -362,7 +362,7 @@ resource "azuread_application" "example" {
       admin_consent_description  = "Allow the application to access example-app on behalf of the signed-in user."
       admin_consent_display_name = "Access example-app"
       id                         = random_uuid.example_app_user_impersonation_scope.result
-      is_enabled                 = true
+      enabled                    = true
       type                       = "User"
       user_consent_description   = "Allow the application to access example-app on your behalf."
       user_consent_display_name  = "Access example-app"

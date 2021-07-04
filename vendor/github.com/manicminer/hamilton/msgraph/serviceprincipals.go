@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/manicminer/hamilton/odata"
 )
@@ -24,17 +23,14 @@ func NewServicePrincipalsClient(tenantId string) *ServicePrincipalsClient {
 	}
 }
 
-// List returns a list of Service Principals, optionally filtered using OData.
-func (c *ServicePrincipalsClient) List(ctx context.Context, filter string) (*[]ServicePrincipal, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// List returns a list of Service Principals, optionally queried using OData.
+func (c *ServicePrincipalsClient) List(ctx context.Context, query odata.Query) (*[]ServicePrincipal, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/servicePrincipals",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -163,7 +159,7 @@ func (c *ServicePrincipalsClient) ListOwners(ctx context.Context, id string) (*[
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/owners", id),
-			Params:      url.Values{"$select": []string{"id"}},
+			Params:      odata.Query{Select: []string{"id"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -200,7 +196,7 @@ func (c *ServicePrincipalsClient) GetOwner(ctx context.Context, servicePrincipal
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/owners/%s/$ref", servicePrincipalId, ownerId),
-			Params:      url.Values{"$select": []string{"id,url"}},
+			Params:      odata.Query{Select: []string{"id", "url"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -310,18 +306,15 @@ func (c *ServicePrincipalsClient) RemoveOwners(ctx context.Context, servicePrinc
 	return status, nil
 }
 
-// ListGroupMemberships returns a list of Groups the Service Principal is member of, optionally filtered using OData.
-func (c *ServicePrincipalsClient) ListGroupMemberships(ctx context.Context, id string, filter string) (*[]Group, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// ListGroupMemberships returns a list of Groups the Service Principal is member of, optionally queried using OData.
+func (c *ServicePrincipalsClient) ListGroupMemberships(ctx context.Context, id string, query odata.Query) (*[]Group, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:          query.Top > 0,
 		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/transitiveMemberOf", id),
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -411,7 +404,7 @@ func (c *ServicePrincipalsClient) ListOwnedObjects(ctx context.Context, id strin
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/ownedObjects", id),
-			Params:      url.Values{"$select": []string{"id"}},
+			Params:      odata.Query{Select: []string{"id"}}.Values(),
 			HasTenantId: true,
 		},
 	})

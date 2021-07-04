@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/manicminer/hamilton/msgraph"
+	"github.com/manicminer/hamilton/odata"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
 	"github.com/hashicorp/terraform-provider-azuread/internal/tf"
@@ -125,7 +126,7 @@ func groupDataSourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 			filter = fmt.Sprintf("%s and securityEnabled eq %t", filter, *securityEnabled)
 		}
 
-		groups, _, err := client.List(ctx, filter)
+		groups, _, err := client.List(ctx, odata.Query{Filter: filter})
 		if err != nil {
 			return tf.ErrorDiagPathF(err, "display_name", "No group found matching specified filter (%s)", filter)
 		}

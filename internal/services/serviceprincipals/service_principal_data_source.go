@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/manicminer/hamilton/msgraph"
+	"github.com/manicminer/hamilton/odata"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
 	"github.com/hashicorp/terraform-provider-azuread/internal/helpers"
@@ -79,11 +80,13 @@ func servicePrincipalDataSourceRead(ctx context.Context, d *schema.ResourceData,
 		servicePrincipal = sp
 	} else if _, ok := d.GetOk("display_name"); ok {
 		displayName := d.Get("display_name").(string)
-		filter := fmt.Sprintf("displayName eq '%s'", displayName)
+		query := odata.Query{
+			Filter: fmt.Sprintf("displayName eq '%s'", displayName),
+		}
 
-		result, _, err := client.List(ctx, filter)
+		result, _, err := client.List(ctx, query)
 		if err != nil {
-			return tf.ErrorDiagF(err, "Listing service principals for filter %q", filter)
+			return tf.ErrorDiagF(err, "Listing service principals for filter %q", query.Filter)
 		}
 		if result == nil {
 			return tf.ErrorDiagF(errors.New("API returned nil result"), "Bad API Response")
@@ -105,11 +108,13 @@ func servicePrincipalDataSourceRead(ctx context.Context, d *schema.ResourceData,
 		}
 	} else {
 		applicationId := d.Get("application_id").(string)
-		filter := fmt.Sprintf("appId eq '%s'", applicationId)
+		query := odata.Query{
+			Filter: fmt.Sprintf("appId eq '%s'", applicationId),
+		}
 
-		result, _, err := client.List(ctx, filter)
+		result, _, err := client.List(ctx, query)
 		if err != nil {
-			return tf.ErrorDiagF(err, "Listing service principals for filter %q", filter)
+			return tf.ErrorDiagF(err, "Listing service principals for filter %q", query.Filter)
 		}
 		if result == nil {
 			return tf.ErrorDiagF(errors.New("API returned nil result"), "Bad API Response")

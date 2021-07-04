@@ -14,6 +14,27 @@ func (s StringNullWhenEmpty) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(s))
 }
 
+type ApplicationExtensionDataType string
+
+const (
+	ApplicationExtensionDataTypeBinary       ApplicationExtensionDataType = "Binary"
+	ApplicationExtensionDataTypeBoolean      ApplicationExtensionDataType = "Boolean"
+	ApplicationExtensionDataTypeDateTime     ApplicationExtensionDataType = "DateTime"
+	ApplicationExtensionDataTypeInteger      ApplicationExtensionDataType = "Integer"
+	ApplicationExtensionDataTypeLargeInteger ApplicationExtensionDataType = "LargeInteger"
+	ApplicationExtensionDataTypeString       ApplicationExtensionDataType = "String"
+)
+
+type ApplicationExtensionTargetObject string
+
+const (
+	ApplicationExtensionTargetObjectApplication  ApplicationExtensionTargetObject = "Application"
+	ApplicationExtensionTargetObjectDevice       ApplicationExtensionTargetObject = "Device"
+	ApplicationExtensionTargetObjectGroup        ApplicationExtensionTargetObject = "Group"
+	ApplicationExtensionTargetObjectOrganization ApplicationExtensionTargetObject = "Organization"
+	ApplicationExtensionTargetObjectUser         ApplicationExtensionTargetObject = "User"
+)
+
 type AppRoleAllowedMemberType string
 
 const (
@@ -26,6 +47,30 @@ type BodyType string
 const (
 	BodyTypeText BodyType = "text"
 	BodyTypeHtml BodyType = "html"
+)
+
+type ExtensionSchemaTargetType string
+
+const (
+	ExtensionSchemaTargetTypeAdministrativeUnit ExtensionSchemaTargetType = "AdministrativeUnit"
+	ExtensionSchemaTargetTypeContact            ExtensionSchemaTargetType = "Contact"
+	ExtensionSchemaTargetTypeDevice             ExtensionSchemaTargetType = "Device"
+	ExtensionSchemaTargetTypeEvent              ExtensionSchemaTargetType = "Event"
+	ExtensionSchemaTargetTypePost               ExtensionSchemaTargetType = "Post"
+	ExtensionSchemaTargetTypeGroup              ExtensionSchemaTargetType = "Group"
+	ExtensionSchemaTargetTypeMessage            ExtensionSchemaTargetType = "Message"
+	ExtensionSchemaTargetTypeOrganization       ExtensionSchemaTargetType = "Organization"
+	ExtensionSchemaTargetTypeUser               ExtensionSchemaTargetType = "User"
+)
+
+type ExtensionSchemaPropertyDataType string
+
+const (
+	ExtensionSchemaPropertyDataBinary   ExtensionSchemaPropertyDataType = "Binary"
+	ExtensionSchemaPropertyDataBoolean  ExtensionSchemaPropertyDataType = "Boolean"
+	ExtensionSchemaPropertyDataDateTime ExtensionSchemaPropertyDataType = "DateTime"
+	ExtensionSchemaPropertyDataInteger  ExtensionSchemaPropertyDataType = "Integer"
+	ExtensionSchemaPropertyDataString   ExtensionSchemaPropertyDataType = "String"
 )
 
 type GroupType string

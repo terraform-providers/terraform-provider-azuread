@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
+
+	"github.com/manicminer/hamilton/odata"
 )
 
 // UsersClient performs operations on Users.
@@ -21,17 +22,14 @@ func NewUsersClient(tenantId string) *UsersClient {
 	}
 }
 
-// List returns a list of Users, optionally filtered using OData.
-func (c *UsersClient) List(ctx context.Context, filter string) (*[]User, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// List returns a list of Users, optionally queried using OData.
+func (c *UsersClient) List(ctx context.Context, query odata.Query) (*[]User, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/users",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -186,17 +184,14 @@ func (c *UsersClient) DeletePermanently(ctx context.Context, id string) (int, er
 	return status, nil
 }
 
-// ListDeleted retrieves a list of recently deleted users, optionally filtered using OData.
-func (c *UsersClient) ListDeleted(ctx context.Context, filter string) (*[]User, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// ListDeleted retrieves a list of recently deleted users, optionally queried using OData.
+func (c *UsersClient) ListDeleted(ctx context.Context, query odata.Query) (*[]User, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/directory/deleteditems/microsoft.graph.user",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -239,18 +234,15 @@ func (c *UsersClient) RestoreDeleted(ctx context.Context, id string) (*User, int
 	return &restoredUser, status, nil
 }
 
-// ListGroupMemberships returns a list of Groups the user is member of, optionally filtered using OData.
-func (c *UsersClient) ListGroupMemberships(ctx context.Context, id string, filter string) (*[]Group, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// ListGroupMemberships returns a list of Groups the user is member of, optionally queried using OData.
+func (c *UsersClient) ListGroupMemberships(ctx context.Context, id string, query odata.Query) (*[]Group, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:          query.Top > 0,
 		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/users/%s/transitiveMemberOf", id),
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})

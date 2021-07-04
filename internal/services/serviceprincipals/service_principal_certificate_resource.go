@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -151,7 +152,7 @@ func servicePrincipalCertificateResourceCreate(ctx context.Context, d *schema.Re
 	newCredentials := make([]msgraph.KeyCredential, 0)
 	if app.KeyCredentials != nil {
 		for _, cred := range *app.KeyCredentials {
-			if cred.KeyId != nil && *cred.KeyId == *credential.KeyId {
+			if cred.KeyId != nil && strings.EqualFold(*cred.KeyId, *credential.KeyId) {
 				return tf.ImportAsExistsDiag("azuread_service_principal_certificate", id.String())
 			}
 			newCredentials = append(newCredentials, cred)
@@ -194,7 +195,7 @@ func servicePrincipalCertificateResourceRead(ctx context.Context, d *schema.Reso
 	var credential *msgraph.KeyCredential
 	if app.KeyCredentials != nil {
 		for _, cred := range *app.KeyCredentials {
-			if cred.KeyId != nil && *cred.KeyId == id.KeyId {
+			if cred.KeyId != nil && strings.EqualFold(*cred.KeyId, id.KeyId) {
 				credential = &cred
 				break
 			}
@@ -248,7 +249,7 @@ func servicePrincipalCertificateResourceDelete(ctx context.Context, d *schema.Re
 	newCredentials := make([]msgraph.KeyCredential, 0)
 	if app.KeyCredentials != nil {
 		for _, cred := range *app.KeyCredentials {
-			if cred.KeyId != nil && *cred.KeyId != id.KeyId {
+			if cred.KeyId != nil && !strings.EqualFold(*cred.KeyId, id.KeyId) {
 				newCredentials = append(newCredentials, cred)
 			}
 		}

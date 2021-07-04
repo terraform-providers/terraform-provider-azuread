@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/manicminer/hamilton/msgraph"
+	"github.com/manicminer/hamilton/odata"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/helpers"
 	"github.com/hashicorp/terraform-provider-azuread/internal/tf"
@@ -281,10 +282,12 @@ func ApplicationFindOAuth2PermissionScope(app *msgraph.Application, scopeId stri
 }
 
 func applicationFindByName(ctx context.Context, client *msgraph.ApplicationsClient, displayName string) (*[]msgraph.Application, error) {
-	filter := fmt.Sprintf("displayName eq '%s'", displayName)
-	apps, _, err := client.List(ctx, filter)
+	query := odata.Query{
+		Filter: fmt.Sprintf("displayName eq '%s'", displayName),
+	}
+	apps, _, err := client.List(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("unable to list Applications with filter %q: %+v", filter, err)
+		return nil, fmt.Errorf("unable to list Applications with filter %q: %+v", query.Filter, err)
 	}
 
 	result := make([]msgraph.Application, 0)
@@ -333,10 +336,13 @@ func applicationSetOwners(ctx context.Context, client *msgraph.ApplicationsClien
 }
 
 func applicationValidateRolesScopes(appRoles, oauth2Permissions []interface{}) error {
-	var values []string
+	var ids, values []string
 
 	for _, roleRaw := range appRoles {
 		role := roleRaw.(map[string]interface{})
+		if id := role["id"].(string); id != "" {
+			ids = append(ids, id)
+		}
 		if val := role["value"].(string); val != "" {
 			values = append(values, val)
 		}
@@ -344,39 +350,62 @@ func applicationValidateRolesScopes(appRoles, oauth2Permissions []interface{}) e
 
 	for _, scopeRaw := range oauth2Permissions {
 		scope := scopeRaw.(map[string]interface{})
+		if id := scope["id"].(string); id != "" {
+			ids = append(ids, id)
+		}
 		if val := scope["value"].(string); val != "" {
 			values = append(values, val)
 		}
 	}
 
-	encountered := make([]string, 0)
+	encounteredIds := make([]string, 0)
+	for _, id := range ids {
+		for _, en := range encounteredIds {
+			if en == id {
+				return fmt.Errorf("validation failed: duplicate ID found: %q", id)
+			}
+		}
+		encounteredIds = append(encounteredIds, id)
+	}
+
+	encounteredValues := make([]string, 0)
 	for _, val := range values {
-		for _, en := range encountered {
+		for _, en := range encounteredValues {
 			if en == val {
 				return fmt.Errorf("validation failed: duplicate value found: %q", val)
 			}
 		}
-		encountered = append(encountered, val)
+		encounteredValues = append(encounteredValues, val)
 	}
 
 	return nil
 }
 
-func expandApplicationApi(input []interface{}) *msgraph.ApplicationApi {
-	oauth2PermissionScopes := &[]msgraph.PermissionScope{}
-
-	if len(input) > 0 {
-		in := input[0].(map[string]interface{})
-		oauth2PermissionScopes = expandApplicationOAuth2PermissionScope(in["oauth2_permission_scope"].(*schema.Set).List())
+func expandApplicationApi(input []interface{}) (result *msgraph.ApplicationApi) {
+	result = &msgraph.ApplicationApi{
+		AcceptMappedClaims:          utils.Bool(false),
+		KnownClientApplications:     &[]string{},
+		OAuth2PermissionScopes:      &[]msgraph.PermissionScope{},
+		RequestedAccessTokenVersion: utils.Int32(int32(1)),
 	}
 
-	return &msgraph.ApplicationApi{
-		AcceptMappedClaims:          nil,
-		KnownClientApplications:     nil,
-		OAuth2PermissionScopes:      oauth2PermissionScopes,
-		PreAuthorizedApplications:   nil,
-		RequestedAccessTokenVersion: nil,
+	if len(input) == 0 {
+		return
 	}
+
+	in := input[0].(map[string]interface{})
+	if v, ok := in["mapped_claims_enabled"]; ok {
+		result.AcceptMappedClaims = utils.Bool(v.(bool))
+	}
+	if v, ok := in["known_client_applications"]; ok {
+		result.KnownClientApplications = tf.ExpandStringSlicePtr(v.(*schema.Set).List())
+	}
+	result.OAuth2PermissionScopes = expandApplicationOAuth2PermissionScope(in["oauth2_permission_scope"].(*schema.Set).List())
+	if v, ok := in["requested_access_token_version"]; ok {
+		result.RequestedAccessTokenVersion = utils.Int32(int32(v.(int)))
+	}
+
+	return
 }
 
 func expandApplicationAppRoles(input []interface{}) *[]msgraph.AppRole {
@@ -506,6 +535,21 @@ func expandApplicationOptionalClaim(in []interface{}) *[]msgraph.OptionalClaim {
 	return &result
 }
 
+func expandApplicationPublicClient(input []interface{}) (result *msgraph.PublicClient) {
+	result = &msgraph.PublicClient{
+		RedirectUris: &[]string{},
+	}
+
+	if len(input) == 0 {
+		return
+	}
+
+	in := input[0].(map[string]interface{})
+	result.RedirectUris = tf.ExpandStringSlicePtr(in["redirect_uris"].(*schema.Set).List())
+
+	return
+}
+
 func expandApplicationRequiredResourceAccess(in []interface{}) *[]msgraph.RequiredResourceAccess {
 	result := make([]msgraph.RequiredResourceAccess, 0)
 
@@ -538,49 +582,72 @@ func expandApplicationResourceAccess(in []interface{}) *[]msgraph.ResourceAccess
 	return &result
 }
 
-func expandApplicationWeb(input []interface{}) *msgraph.ApplicationWeb {
-	var homepageUrl msgraph.StringNullWhenEmpty
-	var logoutUrl msgraph.StringNullWhenEmpty
-
-	implicitGrantSettings := expandApplicationImplicitGrantSettings(nil)
-	redirectUris := &[]string{}
-
-	if len(input) > 0 {
-		in := input[0].(map[string]interface{})
-		homepageUrl = msgraph.StringNullWhenEmpty(in["homepage_url"].(string))
-		logoutUrl = msgraph.StringNullWhenEmpty(in["logout_url"].(string))
-		implicitGrantSettings = expandApplicationImplicitGrantSettings(in["implicit_grant"].([]interface{}))
-		redirectUris = tf.ExpandStringSlicePtr(in["redirect_uris"].(*schema.Set).List())
+func expandApplicationSpa(input []interface{}) (result *msgraph.ApplicationSpa) {
+	result = &msgraph.ApplicationSpa{
+		RedirectUris: &[]string{},
 	}
 
-	return &msgraph.ApplicationWeb{
-		HomePageUrl:           &homepageUrl,
-		ImplicitGrantSettings: implicitGrantSettings,
-		LogoutUrl:             &logoutUrl,
-		RedirectUris:          redirectUris,
-	}
-}
-
-func flattenApplicationApi(in *msgraph.ApplicationApi, dataSource bool) (result []map[string]interface{}) {
-	if in == nil {
+	if len(input) == 0 {
 		return
 	}
 
-	var scopesKey string
-	if dataSource {
-		scopesKey = "oauth2_permission_scopes"
-	} else {
-		scopesKey = "oauth2_permission_scope"
-	}
-	oauth2PermissionScopes := flattenApplicationOAuth2PermissionScopes(in.OAuth2PermissionScopes)
-
-	if oauth2PermissionScopes != nil {
-		result = append(result, map[string]interface{}{
-			scopesKey: oauth2PermissionScopes,
-		})
-	}
+	in := input[0].(map[string]interface{})
+	result.RedirectUris = tf.ExpandStringSlicePtr(in["redirect_uris"].(*schema.Set).List())
 
 	return
+}
+
+func expandApplicationWeb(input []interface{}) (result *msgraph.ApplicationWeb) {
+	result = &msgraph.ApplicationWeb{
+		HomePageUrl:           utils.NullableString(""),
+		ImplicitGrantSettings: expandApplicationImplicitGrantSettings(nil),
+		LogoutUrl:             utils.NullableString(""),
+		RedirectUris:          &[]string{},
+	}
+
+	if len(input) == 0 {
+		return
+	}
+
+	in := input[0].(map[string]interface{})
+	result.HomePageUrl = utils.NullableString(in["homepage_url"].(string))
+	result.LogoutUrl = utils.NullableString(in["logout_url"].(string))
+	result.ImplicitGrantSettings = expandApplicationImplicitGrantSettings(in["implicit_grant"].([]interface{}))
+	result.RedirectUris = tf.ExpandStringSlicePtr(in["redirect_uris"].(*schema.Set).List())
+
+	return
+}
+
+func flattenApplicationApi(in *msgraph.ApplicationApi, dataSource bool) []map[string]interface{} {
+	if in == nil {
+		return []map[string]interface{}{}
+	}
+
+	mappedClaims := false
+	if in.AcceptMappedClaims != nil {
+		mappedClaims = *in.AcceptMappedClaims
+	}
+
+	scopesKey := "oauth2_permission_scope"
+	if dataSource {
+		scopesKey = "oauth2_permission_scopes"
+	}
+
+	accessTokenVersion := 1
+	if in.RequestedAccessTokenVersion != nil {
+		accessTokenVersion = int(*in.RequestedAccessTokenVersion)
+	}
+
+	return []map[string]interface{}{{
+		"known_client_applications":      tf.FlattenStringSlicePtr(in.KnownClientApplications),
+		"mapped_claims_enabled":          mappedClaims,
+		scopesKey:                        flattenApplicationOAuth2PermissionScopes(in.OAuth2PermissionScopes),
+		"requested_access_token_version": accessTokenVersion,
+	}}
+}
+
+func flattenApplicationAppRoleIDs(in *[]msgraph.AppRole) map[string]string {
+	return helpers.ApplicationFlattenAppRoleIDs(in)
 }
 
 func flattenApplicationAppRoles(in *[]msgraph.AppRole) []map[string]interface{} {
@@ -598,54 +665,44 @@ func flattenApplicationGroupMembershipClaims(in *[]msgraph.GroupMembershipClaim)
 	return result
 }
 
-func flattenApplicationImplicitGrant(in *msgraph.ImplicitGrantSettings, implicitGrantConfigured bool) (result []map[string]interface{}) {
+func flattenApplicationImplicitGrant(in *msgraph.ImplicitGrantSettings) []map[string]interface{} {
 	if in == nil {
-		return
+		return []map[string]interface{}{}
 	}
 
-	implicitGrant := make(map[string]interface{})
+	accessToken := false
 	if in.EnableAccessTokenIssuance != nil {
-		if implicitGrantConfigured || *in.EnableAccessTokenIssuance {
-			implicitGrant["access_token_issuance_enabled"] = *in.EnableAccessTokenIssuance
-		}
+		accessToken = *in.EnableAccessTokenIssuance
 	}
+	idToken := false
 	if in.EnableIdTokenIssuance != nil {
-		if implicitGrantConfigured || *in.EnableIdTokenIssuance {
-			implicitGrant["id_token_issuance_enabled"] = *in.EnableIdTokenIssuance
-		}
+		idToken = *in.EnableIdTokenIssuance
 	}
 
-	if len(implicitGrant) > 0 {
-		result = append(result, implicitGrant)
-	}
-	return
+	return []map[string]interface{}{{
+		"access_token_issuance_enabled": accessToken,
+		"id_token_issuance_enabled":     idToken,
+	}}
+}
+
+func flattenApplicationOAuth2PermissionScopeIDs(in *[]msgraph.PermissionScope) map[string]string {
+	return helpers.ApplicationFlattenOAuth2PermissionScopeIDs(in)
 }
 
 func flattenApplicationOAuth2PermissionScopes(in *[]msgraph.PermissionScope) []map[string]interface{} {
 	return helpers.ApplicationFlattenOAuth2PermissionScopes(in)
 }
 
-func flattenApplicationOptionalClaims(in *msgraph.OptionalClaims) interface{} {
-	var result []map[string]interface{}
-
+func flattenApplicationOptionalClaims(in *msgraph.OptionalClaims) []map[string]interface{} {
 	if in == nil {
-		return result
+		return []map[string]interface{}{}
 	}
 
-	accessTokenClaims := flattenApplicationOptionalClaim(in.AccessToken)
-	idTokenClaims := flattenApplicationOptionalClaim(in.IdToken)
-	saml2TokenClaims := flattenApplicationOptionalClaim(in.Saml2Token)
-
-	if len(accessTokenClaims) == 0 && len(idTokenClaims) == 0 {
-		return result
-	}
-
-	result = append(result, map[string]interface{}{
-		"access_token": accessTokenClaims,
-		"id_token":     idTokenClaims,
-		"saml2_token":  saml2TokenClaims,
-	})
-	return result
+	return []map[string]interface{}{{
+		"access_token": flattenApplicationOptionalClaim(in.AccessToken),
+		"id_token":     flattenApplicationOptionalClaim(in.IdToken),
+		"saml2_token":  flattenApplicationOptionalClaim(in.Saml2Token),
+	}}
 }
 
 func flattenApplicationOptionalClaim(in *[]msgraph.OptionalClaim) []interface{} {
@@ -674,6 +731,16 @@ func flattenApplicationOptionalClaim(in *[]msgraph.OptionalClaim) []interface{} 
 	}
 
 	return optionalClaims
+}
+
+func flattenApplicationPublicClient(in *msgraph.PublicClient) []map[string]interface{} {
+	if in == nil {
+		return []map[string]interface{}{}
+	}
+
+	return []map[string]interface{}{{
+		"redirect_uris": tf.FlattenStringSlicePtr(in.RedirectUris),
+	}}
 }
 
 func flattenApplicationRequiredResourceAccess(in *[]msgraph.RequiredResourceAccess) []map[string]interface{} {
@@ -715,29 +782,34 @@ func flattenApplicationResourceAccess(in *[]msgraph.ResourceAccess) []interface{
 	return accesses
 }
 
-func flattenApplicationWeb(in *msgraph.ApplicationWeb, webConfigured bool, implicitGrantConfigured bool) (result []map[string]interface{}) {
+func flattenApplicationSpa(in *msgraph.ApplicationSpa) []map[string]interface{} {
 	if in == nil {
-		return
+		return []map[string]interface{}{}
 	}
 
-	web := make(map[string]interface{})
+	return []map[string]interface{}{{
+		"redirect_uris": tf.FlattenStringSlicePtr(in.RedirectUris),
+	}}
+}
 
-	if webConfigured || in.HomePageUrl != nil {
-		web["homepage_url"] = in.HomePageUrl
-	}
-	if webConfigured || in.LogoutUrl != nil {
-		web["logout_url"] = in.LogoutUrl
-	}
-	if v := tf.FlattenStringSlicePtr(in.RedirectUris); webConfigured || len(v) > 0 {
-		web["redirect_uris"] = v
-	}
-	if implicitGrant := flattenApplicationImplicitGrant(in.ImplicitGrantSettings, implicitGrantConfigured); len(implicitGrant) > 0 {
-		web["implicit_grant"] = implicitGrant
+func flattenApplicationWeb(in *msgraph.ApplicationWeb) []map[string]interface{} {
+	if in == nil {
+		return []map[string]interface{}{}
 	}
 
-	if len(web) > 0 {
-		result = append(result, web)
+	homepageUrl := ""
+	if in.HomePageUrl != nil {
+		homepageUrl = string(*in.HomePageUrl)
+	}
+	logoutUrl := ""
+	if in.LogoutUrl != nil {
+		logoutUrl = string(*in.LogoutUrl)
 	}
 
-	return
+	return []map[string]interface{}{{
+		"homepage_url":   homepageUrl,
+		"logout_url":     logoutUrl,
+		"redirect_uris":  tf.FlattenStringSlicePtr(in.RedirectUris),
+		"implicit_grant": flattenApplicationImplicitGrant(in.ImplicitGrantSettings),
+	}}
 }

@@ -286,6 +286,7 @@ func (c Client) Delete(ctx context.Context, input DeleteHttpRequestInput) (*http
 // GetHttpRequestInput configures a GET request.
 type GetHttpRequestInput struct {
 	ConsistencyFailureFunc ConsistencyFailureFunc
+	DisablePaging          bool
 	ValidStatusCodes       []int
 	ValidStatusFunc        ValidStatusFunc
 	Uri                    Uri
@@ -349,7 +350,7 @@ func (c Client) Get(ctx context.Context, input GetHttpRequestInput) (*http.Respo
 			return nil, status, o, err
 		}
 
-		if firstOdata.NextLink == nil || firstOdata.Value == nil {
+		if input.DisablePaging || firstOdata.NextLink == nil || firstOdata.Value == nil {
 			// No more pages, reassign response body and return
 			resp.Body = io.NopCloser(bytes.NewBuffer(respBody))
 			return resp, status, o, nil

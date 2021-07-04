@@ -4,6 +4,18 @@ import (
 	"github.com/manicminer/hamilton/msgraph"
 )
 
+func ApplicationFlattenAppRoleIDs(in *[]msgraph.AppRole) map[string]string {
+	result := make(map[string]string)
+	if in != nil {
+		for _, role := range *in {
+			if role.Value != nil && *role.Value != "" && role.ID != nil {
+				result[*role.Value] = *role.ID
+			}
+		}
+	}
+	return result
+}
+
 func ApplicationFlattenAppRoles(in *[]msgraph.AppRole) (result []map[string]interface{}) {
 	if in == nil {
 		return
@@ -47,6 +59,18 @@ func ApplicationFlattenAppRoles(in *[]msgraph.AppRole) (result []map[string]inte
 	}
 
 	return //nolint:nakedret
+}
+
+func ApplicationFlattenOAuth2PermissionScopeIDs(in *[]msgraph.PermissionScope) map[string]string {
+	result := make(map[string]string)
+	if in != nil {
+		for _, scope := range *in {
+			if scope.Value != nil && *scope.Value != "" && scope.ID != nil {
+				result[*scope.Value] = *scope.ID
+			}
+		}
+	}
+	return result
 }
 
 func ApplicationFlattenOAuth2PermissionScopes(in *[]msgraph.PermissionScope) (result []map[string]interface{}) {

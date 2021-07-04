@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -114,14 +115,20 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (e Error) String() (s string) {
+func (e Error) String() string {
+	sl := make([]string, 0)
 	if e.Code != nil {
-		s = *e.Code
+		sl = append(sl, *e.Code)
 	}
 	if e.Message != nil {
-		s = fmt.Sprintf("%s: %s", s, *e.Message)
+		sl = append(sl, *e.Message)
 	}
-	return
+	if e.InnerError != nil {
+		if is := e.InnerError.String(); is != "" {
+			sl = append(sl, is)
+		}
+	}
+	return strings.Join(sl, ": ")
 }
 
 func (e Error) Match(errorText string) bool {

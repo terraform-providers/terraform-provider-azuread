@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/manicminer/hamilton/odata"
 )
@@ -81,7 +80,7 @@ func (c *DirectoryRolesClient) ListMembers(ctx context.Context, id string) (*[]s
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/directoryRoles/%s/members", id),
-			Params:      url.Values{"$select": []string{"id"}},
+			Params:      odata.Query{Select: []string{"id"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -194,7 +193,7 @@ func (c *DirectoryRolesClient) GetMember(ctx context.Context, directoryRoleId, m
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/directoryRoles/%s/members/%s/$ref", directoryRoleId, memberId),
-			Params:      url.Values{"$select": []string{"id,url"}},
+			Params:      odata.Query{Select: []string{"id", "url"}}.Values(),
 			HasTenantId: true,
 		},
 	})

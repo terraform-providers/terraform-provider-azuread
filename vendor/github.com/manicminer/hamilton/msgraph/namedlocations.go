@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/manicminer/hamilton/internal/utils"
 	"github.com/manicminer/hamilton/odata"
@@ -24,18 +23,14 @@ func NewNamedLocationsClient(tenantId string) *NamedLocationsClient {
 	}
 }
 
-// List returns a list of Named Locations, optionally filtered using OData.
-func (c *NamedLocationsClient) List(ctx context.Context, filter string) (*[]NamedLocation, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
-
+// List returns a list of Named Locations, optionally queried using OData.
+func (c *NamedLocationsClient) List(ctx context.Context, query odata.Query) (*[]NamedLocation, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/identity/conditionalAccess/namedLocations",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})

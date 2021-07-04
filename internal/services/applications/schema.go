@@ -47,6 +47,7 @@ func schemaOptionalClaims() *schema.Schema {
 								"include_externally_authenticated_upn",
 								"include_externally_authenticated_upn_without_hash",
 								"netbios_domain_and_sam_account_name",
+								"on_premise_security_identifier",
 								"sam_account_name",
 								"use_guid",
 							},

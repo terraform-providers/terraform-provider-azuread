@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 
 	"github.com/manicminer/hamilton/odata"
 )
@@ -23,17 +22,14 @@ func NewGroupsClient(tenantId string) *GroupsClient {
 	}
 }
 
-// List returns a list of Groups, optionally filtered using OData.
-func (c *GroupsClient) List(ctx context.Context, filter string) (*[]Group, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// List returns a list of Groups, optionally queried using OData.
+func (c *GroupsClient) List(ctx context.Context, query odata.Query) (*[]Group, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/groups",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -110,7 +106,6 @@ func (c *GroupsClient) Get(ctx context.Context, id string) (*Group, int, error) 
 }
 
 // GetDeleted retrieves a deleted O365 Group.
-// TODO: add test coverage once API supports creating O365 groups.
 func (c *GroupsClient) GetDeleted(ctx context.Context, id string) (*Group, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
 		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
@@ -174,7 +169,6 @@ func (c *GroupsClient) Delete(ctx context.Context, id string) (int, error) {
 }
 
 // DeletePermanently removes a deleted O365 Group permanently.
-// TODO: add test coverage once API supports creating O365 groups.
 func (c *GroupsClient) DeletePermanently(ctx context.Context, id string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
 		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
@@ -190,18 +184,14 @@ func (c *GroupsClient) DeletePermanently(ctx context.Context, id string) (int, e
 	return status, nil
 }
 
-// ListDeleted retrieves a list of recently deleted O365 groups, optionally filtered using OData.
-// TODO: add test coverage once API supports creating O365 groups
-func (c *GroupsClient) ListDeleted(ctx context.Context, filter string) (*[]Group, int, error) {
-	params := url.Values{}
-	if filter != "" {
-		params.Add("$filter", filter)
-	}
+// ListDeleted retrieves a list of recently deleted O365 groups, optionally queried using OData.
+func (c *GroupsClient) ListDeleted(ctx context.Context, query odata.Query) (*[]Group, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		DisablePaging:    query.Top > 0,
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      "/directory/deleteditems/microsoft.graph.group",
-			Params:      params,
+			Params:      query.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -220,7 +210,6 @@ func (c *GroupsClient) ListDeleted(ctx context.Context, filter string) (*[]Group
 }
 
 // RestoreDeleted restores a recently deleted O365 Group.
-// TODO: add test coverage once API supports creating O365 groups.
 func (c *GroupsClient) RestoreDeleted(ctx context.Context, id string) (*Group, int, error) {
 	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
 		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
@@ -253,7 +242,7 @@ func (c *GroupsClient) ListMembers(ctx context.Context, id string) (*[]string, i
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/groups/%s/members", id),
-			Params:      url.Values{"$select": []string{"id"}},
+			Params:      odata.Query{Select: []string{"id"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -290,7 +279,7 @@ func (c *GroupsClient) GetMember(ctx context.Context, groupId, memberId string) 
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/groups/%s/members/%s/$ref", groupId, memberId),
-			Params:      url.Values{"$select": []string{"id,url"}},
+			Params:      odata.Query{Select: []string{"id", "url"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -416,7 +405,7 @@ func (c *GroupsClient) ListOwners(ctx context.Context, id string) (*[]string, in
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/groups/%s/owners", id),
-			Params:      url.Values{"$select": []string{"id"}},
+			Params:      odata.Query{Select: []string{"id"}}.Values(),
 			HasTenantId: true,
 		},
 	})
@@ -453,7 +442,7 @@ func (c *GroupsClient) GetOwner(ctx context.Context, groupId, ownerId string) (*
 		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/groups/%s/owners/%s/$ref", groupId, ownerId),
-			Params:      url.Values{"$select": []string{"id,url"}},
+			Params:      odata.Query{Select: []string{"id", "url"}}.Values(),
 			HasTenantId: true,
 		},
 	})

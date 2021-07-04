@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/manicminer/hamilton/msgraph"
+	"github.com/manicminer/hamilton/odata"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
 	"github.com/hashicorp/terraform-provider-azuread/internal/tf"
@@ -157,8 +158,10 @@ func usersDataSourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	if upns, ok := d.Get("user_principal_names").([]interface{}); ok && len(upns) > 0 {
 		expectedCount = len(upns)
 		for _, v := range upns {
-			filter := fmt.Sprintf("userPrincipalName eq '%s'", v)
-			result, _, err := client.List(ctx, filter)
+			query := odata.Query{
+				Filter: fmt.Sprintf("userPrincipalName eq '%s'", v),
+			}
+			result, _, err := client.List(ctx, query)
 			if err != nil {
 				return tf.ErrorDiagF(err, "Finding user with UPN: %q", v)
 			}
@@ -198,8 +201,10 @@ func usersDataSourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 		} else if mailNicknames, ok := d.Get("mail_nicknames").([]interface{}); ok && len(mailNicknames) > 0 {
 			expectedCount = len(mailNicknames)
 			for _, v := range mailNicknames {
-				filter := fmt.Sprintf("mailNickname eq '%s'", v)
-				result, _, err := client.List(ctx, filter)
+				query := odata.Query{
+					Filter: fmt.Sprintf("mailNickname eq '%s'", v),
+				}
+				result, _, err := client.List(ctx, query)
 				if err != nil {
 					return tf.ErrorDiagF(err, "Finding user with email alias: %q", v)
 				}

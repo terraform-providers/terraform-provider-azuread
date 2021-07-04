@@ -91,6 +91,10 @@ func TestAccApplication_update(t *testing.T) {
 func TestAccApplication_appRoles(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azuread_application", "test")
 	r := ApplicationResource{}
+	roleIDs := []string{
+		data.UUID(),
+		data.UUID(),
+	}
 
 	data.ResourceTest(t, r, []resource.TestStep{
 		{
@@ -98,30 +102,34 @@ func TestAccApplication_appRoles(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("app_role.#").HasValue("0"),
+				check.That(data.ResourceName).Key("app_role_ids.%").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
 		{
-			Config: r.appRoleNoValue(data),
+			Config: r.appRoleNoValue(data, roleIDs),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("app_role.#").HasValue("1"),
+				check.That(data.ResourceName).Key("app_role_ids.%").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
 		{
-			Config: r.appRole(data),
+			Config: r.appRole(data, roleIDs),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("app_role.#").HasValue("1"),
+				check.That(data.ResourceName).Key("app_role_ids.%").HasValue("1"),
 			),
 		},
 		data.ImportStep(),
 		{
-			Config: r.appRolesUpdate(data),
+			Config: r.appRolesUpdate(data, roleIDs),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("app_role.#").HasValue("2"),
+				check.That(data.ResourceName).Key("app_role_ids.%").HasValue("2"),
 			),
 		},
 		data.ImportStep(),
@@ -130,6 +138,7 @@ func TestAccApplication_appRoles(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("app_role.#").HasValue("0"),
+				check.That(data.ResourceName).Key("app_role_ids.%").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
@@ -192,6 +201,7 @@ func TestAccApplication_oauth2PermissionScopes(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("api.0.oauth2_permission_scope.#").HasValue("0"),
+				check.That(data.ResourceName).Key("oauth2_permission_scope_ids.%").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
@@ -200,6 +210,7 @@ func TestAccApplication_oauth2PermissionScopes(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("api.0.oauth2_permission_scope.#").HasValue("2"),
+				check.That(data.ResourceName).Key("oauth2_permission_scope_ids.%").HasValue("2"),
 			),
 		},
 		data.ImportStep(),
@@ -208,6 +219,7 @@ func TestAccApplication_oauth2PermissionScopes(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("api.0.oauth2_permission_scope.#").HasValue("3"),
+				check.That(data.ResourceName).Key("oauth2_permission_scope_ids.%").HasValue("3"),
 			),
 		},
 		data.ImportStep(),
@@ -215,6 +227,8 @@ func TestAccApplication_oauth2PermissionScopes(t *testing.T) {
 			Config: r.oauth2PermissionScopes(data, scopeIDs),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("api.0.oauth2_permission_scope.#").HasValue("2"),
+				check.That(data.ResourceName).Key("oauth2_permission_scope_ids.%").HasValue("2"),
 			),
 		},
 		data.ImportStep(),
@@ -223,6 +237,7 @@ func TestAccApplication_oauth2PermissionScopes(t *testing.T) {
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
 				check.That(data.ResourceName).Key("api.0.oauth2_permission_scope.#").HasValue("0"),
+				check.That(data.ResourceName).Key("oauth2_permission_scope_ids.%").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
@@ -293,6 +308,34 @@ func TestAccApplication_preventDuplicateNamesFail(t *testing.T) {
 	})
 }
 
+func TestAccApplication_related(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_application", "test")
+	r := ApplicationResource{}
+	uuids := []string{
+		data.UUID(),
+		data.UUID(),
+		data.UUID(),
+		data.UUID(),
+	}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.related(data, uuids),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.relatedUpdate(data, uuids),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func (r ApplicationResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
 	client := clients.Applications.ApplicationsClient
 	client.BaseClient.DisableRetries = true
@@ -341,13 +384,38 @@ resource "azuread_user" "test" {
   password            = "%[2]s"
 }
 
+resource "azuread_application" "known1" {
+  display_name = "acctest-APP-known1-%[1]d"
+}
+
+resource "azuread_application" "known2" {
+  display_name = "acctest-APP-known2-%[1]d"
+}
+
 resource "azuread_application" "test" {
   display_name            = "acctest-APP-complete-%[1]d"
   identifier_uris         = ["api://hashicorptestapp-%[1]d"]
   group_membership_claims = ["All"]
-  sign_in_audience        = "AzureADMultipleOrgs"
+  sign_in_audience        = "AzureADandPersonalMicrosoftAccount"
+
+  device_only_auth_enabled       = true
+  fallback_public_client_enabled = true
+  oauth2_post_response_required  = true
+
+  marketing_url         = "https://hashitown-%[1]d.com/"
+  privacy_statement_url = "https://hashitown-%[1]d.com/privacy"
+  support_url           = "https://support.hashitown-%[1]d.com/"
+  terms_of_service_url  = "https://hashitown-%[1]d.com/terms"
 
   api {
+    mapped_claims_enabled          = true
+    requested_access_token_version = 2
+
+    known_client_applications = [
+      azuread_application.known1.application_id,
+      azuread_application.known2.application_id,
+    ]
+
     oauth2_permission_scope {
       admin_consent_description  = "Administer the application"
       admin_consent_display_name = "Administer"
@@ -375,7 +443,7 @@ resource "azuread_application" "test" {
     display_name         = "Admin"
     enabled              = true
     id                   = "%[5]s"
-    value                = ""
+    value                = "admin"
   }
 
   app_role {
@@ -384,7 +452,7 @@ resource "azuread_application" "test" {
     display_name         = "ReadOnly"
     enabled              = true
     id                   = "%[6]s"
-    value                = "User"
+    value                = "user"
   }
 
   optional_claims {
@@ -406,6 +474,13 @@ resource "azuread_application" "test" {
     saml2_token {
       name = "samlexample"
     }
+  }
+
+  public_client {
+    redirect_uris = [
+      "https://login.microsoftonline.com/common/oauth2/nativeclient",
+      "https://login.live.com/oauth20_desktop.srf",
+    ]
   }
 
   required_resource_access {
@@ -436,10 +511,20 @@ resource "azuread_application" "test" {
     }
   }
 
+  single_page_application {
+    redirect_uris = [
+      "https://beta.hashitown-%[1]d.com/",
+    ]
+  }
+
   web {
-    homepage_url  = "https://homepage-%[1]d"
-    logout_url    = "https://log.me.out"
-    redirect_uris = ["https://unittest.hashicorptest.com"]
+    homepage_url = "https://app.hashitown-%[1]d.com/"
+    logout_url   = "https://app.hashitown-%[1]d.com/logout"
+
+    redirect_uris = [
+      "https://app.hashitown-%[1]d.com/",
+      "https://classic.hashitown-%[1]d.com/",
+    ]
 
     implicit_grant {
       access_token_issuance_enabled = true
@@ -451,7 +536,7 @@ resource "azuread_application" "test" {
 `, data.RandomInteger, data.RandomPassword, data.UUID(), data.UUID(), data.UUID(), data.UUID())
 }
 
-func (ApplicationResource) appRole(data acceptance.TestData) string {
+func (ApplicationResource) appRole(data acceptance.TestData, roleIDs []string) string {
 	return fmt.Sprintf(`
 provider "azuread" {}
 
@@ -464,13 +549,13 @@ resource "azuread_application" "test" {
     display_name         = "Admin"
     enabled              = true
     id                   = "%[2]s"
-    value                = "Admin"
+    value                = "admin"
   }
 }
-`, data.RandomInteger, data.UUID())
+`, data.RandomInteger, roleIDs[0])
 }
 
-func (ApplicationResource) appRoleNoValue(data acceptance.TestData) string {
+func (ApplicationResource) appRoleNoValue(data acceptance.TestData, roleIDs []string) string {
 	return fmt.Sprintf(`
 provider "azuread" {}
 
@@ -485,10 +570,10 @@ resource "azuread_application" "test" {
     enabled              = true
   }
 }
-`, data.RandomInteger, data.UUID())
+`, data.RandomInteger, roleIDs[0])
 }
 
-func (ApplicationResource) appRolesUpdate(data acceptance.TestData) string {
+func (ApplicationResource) appRolesUpdate(data acceptance.TestData, roleIDs []string) string {
 	return fmt.Sprintf(`
 provider "azuread" {}
 
@@ -501,7 +586,7 @@ resource "azuread_application" "test" {
     display_name         = "Admin"
     enabled              = true
     id                   = "%[2]s"
-    value                = ""
+    value                = "admin"
   }
 
   app_role {
@@ -510,10 +595,10 @@ resource "azuread_application" "test" {
     display_name         = "ReadOnly"
     enabled              = true
     id                   = "%[3]s"
-    value                = "User"
+    value                = "user"
   }
 }
-`, data.RandomInteger, data.UUID(), data.UUID())
+`, data.RandomInteger, roleIDs[0], roleIDs[1])
 }
 
 func (ApplicationResource) oauth2PermissionScopes(data acceptance.TestData, scopeIDs []string) string {
@@ -609,6 +694,134 @@ resource "azuread_application" "duplicate" {
   prevent_duplicate_names = true
 }
 `, r.basic(data))
+}
+
+func (ApplicationResource) related(data acceptance.TestData, uuids []string) string {
+	return fmt.Sprintf(`
+provider "azuread" {}
+
+resource "azuread_application" "service" {
+  display_name = "acctest-APP-service-%[1]d"
+
+  api {
+    oauth2_permission_scope {
+      admin_consent_description  = "Allow the application to access acctest-APP-%[1]d on behalf of the signed-in user."
+      admin_consent_display_name = "Access acctest-APP-%[1]d"
+      enabled                    = true
+      id                         = "%[2]s"
+      type                       = "User"
+      user_consent_description   = "Allow the application to access acctest-APP-%[1]d on your behalf."
+      user_consent_display_name  = "Access acctest-APP-%[1]d"
+      value                      = "user_impersonation"
+    }
+  }
+
+  app_role {
+    allowed_member_types = ["User"]
+    description          = "ReadOnly roles have limited query access"
+    display_name         = "ReadOnly"
+    enabled              = true
+    id                   = "%[3]s"
+    value                = "user"
+  }
+}
+
+resource "azuread_application" "test" {
+  display_name = "acctest-APP-related-%[1]d"
+
+  required_resource_access {
+    resource_app_id = azuread_application.service.application_id
+
+    resource_access {
+      id   = azuread_application.service.app_role_ids["user"]
+      type = "Role"
+    }
+
+    resource_access {
+      id   = azuread_application.service.oauth2_permission_scope_ids["user_impersonation"]
+      type = "Scope"
+    }
+  }
+}
+`, data.RandomInteger, uuids[0], uuids[1], uuids[2], uuids[3])
+}
+
+func (ApplicationResource) relatedUpdate(data acceptance.TestData, uuids []string) string {
+	return fmt.Sprintf(`
+provider "azuread" {}
+
+resource "azuread_application" "service" {
+  display_name = "acctest-APP-service-%[1]d"
+
+  api {
+    oauth2_permission_scope {
+      admin_consent_description  = "Allow the application to access acctest-APP-%[1]d on behalf of the signed-in user."
+      admin_consent_display_name = "Access acctest-APP-%[1]d"
+      enabled                    = true
+      id                         = "%[2]s"
+      type                       = "User"
+      user_consent_description   = "Allow the application to access acctest-APP-%[1]d on your behalf."
+      user_consent_display_name  = "Access acctest-APP-%[1]d"
+      value                      = "user_impersonation"
+    }
+
+    oauth2_permission_scope {
+      admin_consent_description  = "Administer the application"
+      admin_consent_display_name = "Administer"
+      enabled                    = true
+      id                         = "%[4]s"
+      type                       = "Admin"
+      value                      = "administer"
+    }
+  }
+
+  app_role {
+    allowed_member_types = ["User"]
+    description          = "Admins can manage roles and perform all task actions"
+    display_name         = "Admin"
+    enabled              = true
+    id                   = "%[5]s"
+    value                = "admin"
+  }
+
+  app_role {
+    allowed_member_types = ["User"]
+    description          = "ReadOnly roles have limited query access"
+    display_name         = "ReadOnly"
+    enabled              = true
+    id                   = "%[3]s"
+    value                = "user"
+  }
+}
+
+resource "azuread_application" "test" {
+  display_name = "acctest-APP-related-%[1]d"
+
+  required_resource_access {
+    resource_app_id = azuread_application.service.application_id
+
+    resource_access {
+      id   = azuread_application.service.app_role_ids["admin"]
+      type = "Role"
+    }
+
+    resource_access {
+      id   = azuread_application.service.app_role_ids["user"]
+      type = "Role"
+    }
+
+    resource_access {
+      id   = azuread_application.service.oauth2_permission_scope_ids["administer"]
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = azuread_application.service.oauth2_permission_scope_ids["user_impersonation"]
+      type = "Scope"
+    }
+  }
+}
+`, data.RandomInteger, uuids[0], uuids[1], uuids[2], uuids[3])
 }
 
 func (ApplicationResource) duplicateAppRolesOauth2PermissionsValues(data acceptance.TestData) string {

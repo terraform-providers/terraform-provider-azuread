@@ -187,7 +187,7 @@ github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/manicminer/hamilton v0.17.0
+# github.com/manicminer/hamilton v0.20.0
 ## explicit
 github.com/manicminer/hamilton/auth
 github.com/manicminer/hamilton/environments

@@ -15,7 +15,7 @@ type Config struct {
 	Environment environments.Environment
 
 	// Version specifies the token version  to acquire from Microsoft Identity Platform.
-	// Ignored when using Azure CLI authentication.
+	// Ignored when using Azure CLI or Managed Identity authentication.
 	Version TokenVersion
 
 	// Azure Active Directory tenant to connect to, should be a valid UUID
@@ -36,7 +36,10 @@ type Config struct {
 	// Enables client certificate authentication using client assertions
 	EnableClientCertAuth bool
 
-	// Specifies the path to a client certificate bundle in PFX format
+	// Specifies the contents of a client certificate PKCS#12 bundle
+	ClientCertData []byte
+
+	// Specifies the path to a client certificate PKCS#12 bundle (.pfx file)
 	ClientCertPath string
 
 	// Specifies the encryption password to unlock a client certificate
