@@ -52,6 +52,7 @@ resource "azuread_group" "example" {
 
 The following arguments are supported:
 
+* `assignable_to_role` - (Optional) Indicates whether this group can be assigned to an Azure Active Directory role. Can only be `true` for security-enabled groups. Changing this forces a new resource to be created.
 * `description` - (Optional) The description for the group.
 * `display_name` - (Required) The display name for the group.
 * `mail_enabled` - (Optional) Whether the group is a mail enabled, with a shared group mailbox. At least one of `mail_enabled` or `security_enabled` must be specified. A group can be mail enabled _and_ security enabled.

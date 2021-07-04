@@ -63,6 +63,12 @@ func groupDataSource() *schema.Resource {
 				Computed:    true,
 			},
 
+			"assignable_to_role": {
+				Description: "Indicates whether this group can be assigned to an Azure Active Directory role",
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
+
 			"description": {
 				Description: "The optional description of the group",
 				Type:        schema.TypeString,
@@ -180,6 +186,7 @@ func groupDataSourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 
 	d.SetId(*group.ID)
 
+	tf.Set(d, "assignable_to_role", group.IsAssignableToRole)
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
 	tf.Set(d, "mail_enabled", group.MailEnabled)

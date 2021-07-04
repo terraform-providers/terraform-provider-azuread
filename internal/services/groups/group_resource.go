@@ -54,6 +54,13 @@ func groupResource() *schema.Resource {
 				ValidateDiagFunc: validate.NoEmptyStrings,
 			},
 
+			"assignable_to_role": {
+				Description: "Indicates whether this group can be assigned to an Azure Active Directory role. This property can only be `true` for security-enabled groups.",
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+			},
+
 			"description": {
 				Description: "The description for the group",
 				Type:        schema.TypeString,
@@ -129,8 +136,28 @@ func groupResource() *schema.Resource {
 
 func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, meta interface{}) error {
 	client := meta.(*clients.Client).Groups.GroupsClient
+
 	oldDisplayName, newDisplayName := diff.GetChange("display_name")
+	if diff.Get("prevent_duplicate_names").(bool) &&
+		(oldDisplayName.(string) == "" || oldDisplayName.(string) != newDisplayName.(string)) {
+		result, err := groupFindByName(ctx, client, newDisplayName.(string))
+		if err != nil {
+			return fmt.Errorf("could not check for existing application(s): %+v", err)
+		}
+		if result != nil && len(*result) > 0 {
+			for _, existingGroup := range *result {
+				if existingGroup.ID == nil {
+					return fmt.Errorf("API error: group returned with nil object ID during duplicate name check")
+				}
+				if diff.Id() == "" || diff.Id() == *existingGroup.ID {
+					return tf.ImportAsDuplicateError("azuread_group", *existingGroup.ID, newDisplayName.(string))
+				}
+			}
+		}
+	}
+
 	mailEnabled := diff.Get("mail_enabled").(bool)
+	securityEnabled := diff.Get("security_enabled").(bool)
 	groupTypes := make([]msgraph.GroupType, 0)
 	for _, v := range diff.Get("types").(*schema.Set).List() {
 		groupTypes = append(groupTypes, msgraph.GroupType(v.(string)))
@@ -152,22 +179,8 @@ func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, 
 		return fmt.Errorf("`mail_enabled` must be true for unified groups")
 	}
 
-	if diff.Get("prevent_duplicate_names").(bool) &&
-		(oldDisplayName.(string) == "" || oldDisplayName.(string) != newDisplayName.(string)) {
-		result, err := groupFindByName(ctx, client, newDisplayName.(string))
-		if err != nil {
-			return fmt.Errorf("could not check for existing application(s): %+v", err)
-		}
-		if result != nil && len(*result) > 0 {
-			for _, existingGroup := range *result {
-				if existingGroup.ID == nil {
-					return fmt.Errorf("API error: group returned with nil object ID during duplicate name check")
-				}
-				if diff.Id() == "" || diff.Id() == *existingGroup.ID {
-					return tf.ImportAsDuplicateError("azuread_group", *existingGroup.ID, newDisplayName.(string))
-				}
-			}
-		}
+	if diff.Get("assignable_to_role").(bool) && !securityEnabled {
+		return fmt.Errorf("`assignable_to_role` can only be `true` for security-enabled groups")
 	}
 
 	return nil
@@ -204,12 +217,13 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	}
 
 	properties := msgraph.Group{
-		Description:     utils.NullableString(d.Get("description").(string)),
-		DisplayName:     utils.String(displayName),
-		GroupTypes:      groupTypes,
-		MailEnabled:     utils.Bool(d.Get("mail_enabled").(bool)),
-		MailNickname:    utils.String(mailNickname),
-		SecurityEnabled: utils.Bool(d.Get("security_enabled").(bool)),
+		Description:        utils.NullableString(d.Get("description").(string)),
+		DisplayName:        utils.String(displayName),
+		GroupTypes:         groupTypes,
+		IsAssignableToRole: utils.Bool(d.Get("assignable_to_role").(bool)),
+		MailEnabled:        utils.Bool(d.Get("mail_enabled").(bool)),
+		MailNickname:       utils.String(mailNickname),
+		SecurityEnabled:    utils.Bool(d.Get("security_enabled").(bool)),
 	}
 
 	// Add the caller as the group owner to prevent lock-out after creation
@@ -376,6 +390,7 @@ func groupResourceRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		return tf.ErrorDiagF(err, "Retrieving group with object ID: %q", d.Id())
 	}
 
+	tf.Set(d, "assignable_to_role", group.IsAssignableToRole)
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
 	tf.Set(d, "mail_enabled", group.MailEnabled)

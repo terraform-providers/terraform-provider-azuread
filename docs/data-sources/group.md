@@ -30,6 +30,7 @@ The following arguments are supported:
 
 The following attributes are exported:
 
+* `assignable_to_role` - Indicates whether this group can be assigned to an Azure Active Directory role.
 * `description` - The optional description of the group.
 * `display_name` - The display name for the group.
 * `object_id` - The object ID of the group.

@@ -77,6 +77,21 @@ func TestAccGroup_update(t *testing.T) {
 	})
 }
 
+func TestAccGroup_assignableToRole(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_group", "test")
+	r := GroupResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.assignableToRole(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccGroup_owners(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azuread_group", "test")
 	r := GroupResource{}
@@ -371,15 +386,26 @@ resource "azuread_user" "test" {
 }
 
 resource "azuread_group" "test" {
-  description      = "Please delete me as this is a.test.AD group!"
-  display_name     = "acctestGroup-complete-%[1]d"
-  types            = ["Unified"]
-  mail_enabled     = true
-  security_enabled = true
-  members          = [azuread_user.test.object_id]
-  owners           = [azuread_user.test.object_id]
+  assignable_to_role = true
+  description        = "Please delete me as this is a.test.AD group!"
+  display_name       = "acctestGroup-complete-%[1]d"
+  types              = ["Unified"]
+  mail_enabled       = true
+  security_enabled   = true
+  members            = [azuread_user.test.object_id]
+  owners             = [azuread_user.test.object_id]
 }
 `, data.RandomInteger, data.RandomPassword)
+}
+
+func (GroupResource) assignableToRole(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azuread_group" "test" {
+  assignable_to_role = true
+  display_name       = "acctestGroup-assignableToRole-%[1]d"
+  security_enabled   = true
+}
+`, data.RandomInteger)
 }
 
 func (GroupResource) noMembers(data acceptance.TestData) string {
