@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
-	"github.com/hashicorp/terraform-provider-azuread/internal/helpers/aadgraph"
 	"github.com/hashicorp/terraform-provider-azuread/internal/services/applications/parse"
 	"github.com/hashicorp/terraform-provider-azuread/internal/utils"
 )
@@ -170,44 +169,27 @@ func TestAccApplicationCertificate_requiresImport(t *testing.T) {
 }
 
 func (ApplicationCertificateResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
+	client := clients.Applications.ApplicationsClient
+	client.BaseClient.DisableRetries = true
+
 	id, err := parse.CertificateID(state.ID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing Application Certificate ID: %v", err)
 	}
 
-	if clients.EnableMsGraphBeta {
-		app, status, err := clients.Applications.MsClient.Get(ctx, id.ObjectId)
-		if err != nil {
-			if status == http.StatusNotFound {
-				return nil, fmt.Errorf("Application with object ID %q does not exist", id.ObjectId)
-			}
-			return nil, fmt.Errorf("failed to retrieve Application with object ID %q: %+v", id.ObjectId, err)
+	app, status, err := client.Get(ctx, id.ObjectId)
+	if err != nil {
+		if status == http.StatusNotFound {
+			return nil, fmt.Errorf("Application with object ID %q does not exist", id.ObjectId)
 		}
+		return nil, fmt.Errorf("failed to retrieve Application with object ID %q: %+v", id.ObjectId, err)
+	}
 
-		if app.KeyCredentials != nil {
-			for _, cred := range *app.KeyCredentials {
-				if cred.KeyId != nil && *cred.KeyId == id.KeyId {
-					return utils.Bool(true), nil
-				}
+	if app.KeyCredentials != nil {
+		for _, cred := range *app.KeyCredentials {
+			if cred.KeyId != nil && *cred.KeyId == id.KeyId {
+				return utils.Bool(true), nil
 			}
-		}
-	} else {
-		resp, err := clients.Applications.AadClient.Get(ctx, id.ObjectId)
-		if err != nil {
-			if utils.ResponseWasNotFound(resp.Response) {
-				return nil, fmt.Errorf("Application with object ID %q does not exist", id.ObjectId)
-			}
-			return nil, fmt.Errorf("failed to retrieve Application with object ID %q: %+v", id.ObjectId, err)
-		}
-
-		credentials, err := clients.Applications.AadClient.ListKeyCredentials(ctx, id.ObjectId)
-		if err != nil {
-			return nil, fmt.Errorf("listing Key Credentials for Application %q: %+v", id.ObjectId, err)
-		}
-
-		cred := aadgraph.KeyCredentialResultFindByKeyId(credentials, id.KeyId)
-		if cred != nil {
-			return utils.Bool(true), nil
 		}
 	}
 
@@ -217,7 +199,7 @@ func (ApplicationCertificateResource) Exists(ctx context.Context, clients *clien
 func (ApplicationCertificateResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_application" "test" {
-  name = "acctestApp-%[1]d"
+  display_name = "acctestApp-%[1]d"
 }
 `, data.RandomInteger)
 }

@@ -2,10 +2,16 @@ package applications
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/manicminer/hamilton/msgraph"
+
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
+	"github.com/hashicorp/terraform-provider-azuread/internal/tf"
 	"github.com/hashicorp/terraform-provider-azuread/internal/validate"
 )
 
@@ -13,38 +19,35 @@ func applicationDataSource() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: applicationDataSourceRead,
 
+		Timeouts: &schema.ResourceTimeout{
+			Read: schema.DefaultTimeout(5 * time.Minute),
+		},
+
 		Schema: map[string]*schema.Schema{
 			"object_id": {
+				Description:      "The application's object ID",
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				ExactlyOneOf:     []string{"application_id", "display_name", "name", "object_id"},
+				ExactlyOneOf:     []string{"application_id", "display_name", "object_id"},
 				ValidateDiagFunc: validate.UUID,
 			},
 
 			"application_id": {
+				Description:      "The Application ID (also called Client ID)",
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				ExactlyOneOf:     []string{"application_id", "display_name", "name", "object_id"},
+				ExactlyOneOf:     []string{"application_id", "display_name", "object_id"},
 				ValidateDiagFunc: validate.UUID,
 			},
 
 			"display_name": {
+				Description:      "The display name for the application",
 				Type:             schema.TypeString,
 				Optional:         true,
 				Computed:         true,
-				ExactlyOneOf:     []string{"application_id", "display_name", "name", "object_id"},
-				ValidateDiagFunc: validate.NoEmptyStrings,
-			},
-
-			// TODO: remove in v2.0
-			"name": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				Computed:         true,
-				Deprecated:       "This property has been renamed to `display_name` and will be removed in version 2.0 of the AzureAD provider",
-				ExactlyOneOf:     []string{"application_id", "display_name", "name", "object_id"},
+				ExactlyOneOf:     []string{"application_id", "display_name", "object_id"},
 				ValidateDiagFunc: validate.NoEmptyStrings,
 			},
 
@@ -55,55 +58,57 @@ func applicationDataSource() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						// TODO: v2.0 also consider another computed typemap attribute `oauth2_permission_scope_ids` for easier consumption
 						"oauth2_permission_scopes": {
-							Type:     schema.TypeSet,
-							Computed: true,
+							Description: "List of OAuth2 permission scopes published by the application",
+							Type:        schema.TypeList,
+							Computed:    true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "The unique identifier of the delegated permission. Must be a valid UUID",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"admin_consent_description": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Delegated permission description that appears in all tenant-wide admin consent experiences, intended to be read by an administrator granting the permission on behalf of all users",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"admin_consent_display_name": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Display name for the delegated permission, intended to be read by an administrator granting the permission on behalf of all users",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"enabled": {
-										Type:     schema.TypeBool,
-										Computed: true,
-									},
-
-									// TODO: v2.0 remove this
-									"is_enabled": {
-										Type:       schema.TypeBool,
-										Computed:   true,
-										Deprecated: "[NOTE] This attribute has been renamed to `enabled` and will be removed in version 2.0 of the AzureAD provider",
+										Description: "Determines if the permission scope is enabled",
+										Type:        schema.TypeBool,
+										Computed:    true,
 									},
 
 									"type": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Whether this delegated permission should be considered safe for non-admin users to consent to on behalf of themselves, or whether an administrator should be required for consent to the permissions. Possible values are `User` or `Admin`",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"user_consent_description": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Delegated permission description that appears in the end user consent experience, intended to be read by a user consenting on their own behalf",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"user_consent_display_name": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Display name for the delegated permission that appears in the end user consent experience",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"value": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "The value that is used for the `scp` claim in OAuth 2.0 access tokens",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 								},
 							},
@@ -114,182 +119,93 @@ func applicationDataSource() *schema.Resource {
 
 			// TODO: v2.0 consider another computed typemap attribute `app_role_ids` for easier consumption
 			"app_roles": {
-				Type:     schema.TypeList,
-				Computed: true,
+				Description: "List of app roles published by the application",
+				Type:        schema.TypeList,
+				Computed:    true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"id": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "The unique identifier of the app role",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"allowed_member_types": {
-							Type:     schema.TypeSet,
-							Computed: true,
+							Description: "Specifies whether this app role definition can be assigned to users and groups, or to other applications (that are accessing this application in a standalone scenario). Possible values are `User` or `Application`, or both",
+							Type:        schema.TypeList,
+							Computed:    true,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
 						},
 
 						"description": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "Description of the app role that appears when the role is being assigned and, if the role functions as an application permissions, during the consent experiences",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"display_name": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "Display name for the app role that appears during app role assignment and in consent experiences",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"enabled": {
-							Type:     schema.TypeBool,
-							Computed: true,
-						},
-
-						// TODO: v2.0 remove this
-						"is_enabled": {
-							Type:       schema.TypeBool,
-							Computed:   true,
-							Deprecated: "[NOTE] This attribute will be renamed to `enabled` in version 2.0 of the AzureAD provider",
+							Description: "The unique identifier of the app role",
+							Type:        schema.TypeBool,
+							Computed:    true,
 						},
 
 						"value": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "The value that is used for the `roles` claim in ID tokens and OAuth 2.0 access tokens that are authenticating an assigned service or user principal",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 					},
 				},
 			},
 
-			// TODO: v2.0 remove this
-			"available_to_other_tenants": {
-				Type:       schema.TypeBool,
-				Computed:   true,
-				Deprecated: "[NOTE] This attribute will be replaced by a new property `sign_in_audience` in version 2.0 of the AzureAD provider",
-			},
-
 			"fallback_public_client_enabled": {
-				Type:     schema.TypeBool,
-				Computed: true,
+				Description: "The fallback application type as public client, such as an installed application running on a mobile device",
+				Type:        schema.TypeBool,
+				Computed:    true,
 			},
 
 			"group_membership_claims": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			// TODO: v2.0 remove this
-			"homepage": {
-				Type:       schema.TypeString,
-				Computed:   true,
-				Deprecated: "[NOTE] This attribute will be moved into the `web` block in version 2.0 of the AzureAD provider",
-			},
-
-			"identifier_uris": {
-				Type:     schema.TypeList,
-				Computed: true,
+				Description: "The `groups` claim issued in a user or OAuth 2.0 access token that the app expects",
+				Type:        schema.TypeList,
+				Computed:    true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
 			},
 
-			// TODO: v2.0 remove this
-			"logout_url": {
-				Type:       schema.TypeString,
-				Computed:   true,
-				Deprecated: "[NOTE] This attribute will be moved into the `web` block in version 2.0 of the AzureAD provider",
-			},
-
-			// TODO: v2.0 remove this
-			"oauth2_allow_implicit_flow": {
-				Type:       schema.TypeBool,
-				Computed:   true,
-				Deprecated: "[NOTE] This attribute will be moved to the `implicit_grant` block and renamed to `access_token_issuance_enabled` in version 2.0 of the AzureAD provider",
-			},
-
-			// TODO: v2.0 remove this block
-			"oauth2_permissions": {
-				Type:       schema.TypeList,
-				Optional:   true,
-				Computed:   true,
-				Deprecated: "[NOTE] The `oauth2_permissions` block has been renamed to `oauth2_permission_scopes` and moved to the `api` block. `oauth2_permissions` will be removed in version 2.0 of the AzureAD provider.",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"admin_consent_description": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"admin_consent_display_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"id": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"enabled": {
-							Type:     schema.TypeBool,
-							Computed: true,
-						},
-
-						"is_enabled": {
-							Type:     schema.TypeBool,
-							Computed: true,
-						},
-
-						"type": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"user_consent_description": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"user_consent_display_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-
-						"value": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
+			"identifier_uris": {
+				Description: "A list of user-defined URI(s) that uniquely identify a Web application within it's Azure AD tenant, or within a verified custom domain if the application is multi-tenant",
+				Type:        schema.TypeList,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
 
 			"optional_claims": {
 				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"access_token": schemaOptionalClaims(),
 						"id_token":     schemaOptionalClaims(),
-						// TODO: enable when https://github.com/Azure/azure-sdk-for-go/issues/9714 resolved
-						//"saml_token": schemaOptionalClaims(),
+						"saml2_token":  schemaOptionalClaims(),
 					},
 				},
 			},
 
 			"owners": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-
-			// TODO: v2.0 remove this
-			"reply_urls": {
-				Type:       schema.TypeList,
-				Computed:   true,
-				Deprecated: "[NOTE] This attribute will be replaced by a new attribute `redirect_uris` in the `web` block in version 2.0 of the AzureAD provider",
+				Description: "A list of object IDs of principals that are assigned ownership of the application",
+				Type:        schema.TypeList,
+				Computed:    true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
@@ -301,23 +217,27 @@ func applicationDataSource() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"resource_app_id": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "The unique identifier for the resource that the application requires access to. This is the Application ID of the target application",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"resource_access": {
-							Type:     schema.TypeList,
-							Computed: true,
+							Description: "A collection of `resource_access` blocks describing OAuth2.0 permission scopes and app roles that the application requires from the specified resource",
+							Type:        schema.TypeList,
+							Computed:    true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "The unique identifier for an app role or OAuth2 permission scope published by the resource application",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 
 									"type": {
-										Type:     schema.TypeString,
-										Computed: true,
+										Description: "Specifies whether the `id` property references an app role or an OAuth2 permission scope. Possible values are `Role` or `Scope`",
+										Type:        schema.TypeString,
+										Computed:    true,
 									},
 								},
 							},
@@ -327,37 +247,32 @@ func applicationDataSource() *schema.Resource {
 			},
 
 			"sign_in_audience": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			// TODO: v2.0 drop this, there's no such distinction any more
-			"type": {
-				Type:       schema.TypeString,
-				Computed:   true,
-				Deprecated: "[NOTE] This legacy property is deprecated and will be removed in version 2.0 of the AzureAD provider",
+				Description: "The Microsoft account types that are supported for the current application",
+				Type:        schema.TypeString,
+				Computed:    true,
 			},
 
 			"web": {
 				Type:     schema.TypeList,
-				Optional: true,
 				Computed: true,
-				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"homepage_url": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "Home page or landing page of the application",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"logout_url": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Description: "The URL that will be used by Microsoft's authorization service to sign out a user using front-channel, back-channel or SAML logout protocols",
+							Type:        schema.TypeString,
+							Computed:    true,
 						},
 
 						"redirect_uris": {
-							Type:     schema.TypeSet,
-							Computed: true,
+							Description: "A list of URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent",
+							Type:        schema.TypeList,
+							Computed:    true,
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
@@ -369,11 +284,16 @@ func applicationDataSource() *schema.Resource {
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"access_token_issuance_enabled": {
-										Type:     schema.TypeBool,
-										Computed: true,
+										Description: "Whether this web application can request an access token using OAuth 2.0 implicit flow",
+										Type:        schema.TypeBool,
+										Computed:    true,
 									},
 
-									// TODO: v2.0 support `id_token_issuance_enabled`
+									"id_token_issuance_enabled": {
+										Description: "Whether this web application can request an ID token using OAuth 2.0 implicit flow",
+										Type:        schema.TypeBool,
+										Computed:    true,
+									},
 								},
 							},
 						},
@@ -385,8 +305,94 @@ func applicationDataSource() *schema.Resource {
 }
 
 func applicationDataSourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	if meta.(*clients.Client).EnableMsGraphBeta {
-		return applicationDataSourceReadMsGraph(ctx, d, meta)
+	client := meta.(*clients.Client).Applications.ApplicationsClient
+
+	var app *msgraph.Application
+
+	if objectId, ok := d.Get("object_id").(string); ok && objectId != "" {
+		var status int
+		var err error
+		app, status, err = client.Get(ctx, objectId)
+		if err != nil {
+			if status == http.StatusNotFound {
+				return tf.ErrorDiagPathF(nil, "object_id", "Application with object ID %q was not found", objectId)
+			}
+
+			return tf.ErrorDiagPathF(err, "object_id", "Retrieving Application with object ID %q", objectId)
+		}
+	} else {
+		var fieldName, fieldValue string
+		if applicationId, ok := d.Get("application_id").(string); ok && applicationId != "" {
+			fieldName = "appId"
+			fieldValue = applicationId
+		} else if displayName, ok := d.Get("display_name").(string); ok && displayName != "" {
+			fieldName = "displayName"
+			fieldValue = displayName
+		} else {
+			return tf.ErrorDiagF(nil, "One of `object_id`, `application_id` or `displayName` must be specified")
+		}
+
+		filter := fmt.Sprintf("%s eq '%s'", fieldName, fieldValue)
+
+		result, _, err := client.List(ctx, filter)
+		if err != nil {
+			return tf.ErrorDiagF(err, "Listing applications for filter %q", filter)
+		}
+
+		switch {
+		case result == nil || len(*result) == 0:
+			return tf.ErrorDiagF(fmt.Errorf("No applications found matching filter: %q", filter), "Application not found")
+		case len(*result) > 1:
+			return tf.ErrorDiagF(fmt.Errorf("Found multiple applications matching filter: %q", filter), "Multiple applications found")
+		}
+
+		app = &(*result)[0]
+		switch fieldName {
+		case "appId":
+			if app.AppId == nil {
+				return tf.ErrorDiagF(fmt.Errorf("nil AppID for applications matching filter: %q", filter), "Bad API Response")
+			}
+			if *app.AppId != fieldValue {
+				return tf.ErrorDiagF(fmt.Errorf("AppID does not match (%q != %q) for applications matching filter: %q", *app.AppId, fieldValue, filter), "Bad API Response")
+			}
+		case "displayName":
+			if app.DisplayName == nil {
+				return tf.ErrorDiagF(fmt.Errorf("nil displayName for applications matching filter: %q", filter), "Bad API Response")
+			}
+			if *app.DisplayName != fieldValue {
+				return tf.ErrorDiagF(fmt.Errorf("DisplayName does not match (%q != %q) for applications matching filter: %q", *app.DisplayName, fieldValue, filter), "Bad API Response")
+			}
+		}
 	}
-	return applicationDataSourceReadAadGraph(ctx, d, meta)
+
+	if app == nil {
+		return tf.ErrorDiagF(fmt.Errorf("app was unexpectedly nil"), "Application not found")
+	}
+
+	if app.ID == nil {
+		return tf.ErrorDiagF(fmt.Errorf("Object ID returned for application is nil"), "Bad API Response")
+	}
+
+	d.SetId(*app.ID)
+
+	tf.Set(d, "api", flattenApplicationApi(app.Api, true))
+	tf.Set(d, "app_roles", flattenApplicationAppRoles(app.AppRoles))
+	tf.Set(d, "application_id", app.AppId)
+	tf.Set(d, "display_name", app.DisplayName)
+	tf.Set(d, "fallback_public_client_enabled", app.IsFallbackPublicClient)
+	tf.Set(d, "group_membership_claims", flattenApplicationGroupMembershipClaims(app.GroupMembershipClaims))
+	tf.Set(d, "identifier_uris", tf.FlattenStringSlicePtr(app.IdentifierUris))
+	tf.Set(d, "object_id", app.ID)
+	tf.Set(d, "optional_claims", flattenApplicationOptionalClaims(app.OptionalClaims))
+	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
+	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
+	tf.Set(d, "web", flattenApplicationWeb(app.Web, true, true))
+
+	owners, _, err := client.ListOwners(ctx, *app.ID)
+	if err != nil {
+		return tf.ErrorDiagPathF(err, "owners", "Could not retrieve owners for application with object ID %q", *app.ID)
+	}
+	tf.Set(d, "owners", owners)
+
+	return nil
 }

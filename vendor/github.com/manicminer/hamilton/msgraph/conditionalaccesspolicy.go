@@ -22,7 +22,7 @@ func NewConditionalAccessPolicyClient(tenantId string) *ConditionalAccessPolicyC
 	}
 }
 
-// List returns a list of ConditionalAccessPolicys, optionally filtered using OData.
+// List returns a list of ConditionalAccessPolicy, optionally filtered using OData.
 func (c *ConditionalAccessPolicyClient) List(ctx context.Context, filter string) (*[]ConditionalAccessPolicy, int, error) {
 	params := url.Values{}
 	if filter != "" {
@@ -83,10 +83,11 @@ func (c *ConditionalAccessPolicyClient) Create(ctx context.Context, conditionalA
 	return &newConditionalAccessPolicy, status, nil
 }
 
-// Get retrieves an ConditionalAccessPolicy.
+// Get retrieves a ConditionalAccessPolicy.
 func (c *ConditionalAccessPolicyClient) Get(ctx context.Context, id string) (*ConditionalAccessPolicy, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/conditionalAccess/policies/%s", id),
 			HasTenantId: true,
@@ -119,8 +120,9 @@ func (c *ConditionalAccessPolicyClient) Update(ctx context.Context, conditionalA
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Patch(ctx, PatchHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/conditionalAccess/policies/%s", *conditionalAccessPolicy.ID),
 			HasTenantId: true,
@@ -135,7 +137,8 @@ func (c *ConditionalAccessPolicyClient) Update(ctx context.Context, conditionalA
 // Delete removes a ConditionalAccessPolicy.
 func (c *ConditionalAccessPolicyClient) Delete(ctx context.Context, id string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusNoContent},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/conditionalAccess/policies/%s", id),
 			HasTenantId: true,

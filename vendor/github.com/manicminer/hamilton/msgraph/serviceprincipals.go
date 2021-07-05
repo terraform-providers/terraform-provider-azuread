@@ -62,9 +62,13 @@ func (c *ServicePrincipalsClient) Create(ctx context.Context, servicePrincipal S
 	if err != nil {
 		return nil, status, fmt.Errorf("json.Marshal(): %v", err)
 	}
+	appNotReplicated := func(resp *http.Response, o *odata.OData) bool {
+		return o.Error != nil && o.Error.Match(odata.ErrorServicePrincipalInvalidAppId)
+	}
 	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusCreated},
+		Body:                   body,
+		ConsistencyFailureFunc: appNotReplicated,
+		ValidStatusCodes:       []int{http.StatusCreated},
 		Uri: Uri{
 			Entity:      "/servicePrincipals",
 			HasTenantId: true,
@@ -88,7 +92,8 @@ func (c *ServicePrincipalsClient) Create(ctx context.Context, servicePrincipal S
 // Get retrieves a Service Principal.
 func (c *ServicePrincipalsClient) Get(ctx context.Context, id string) (*ServicePrincipal, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s", id),
 			HasTenantId: true,
@@ -120,8 +125,9 @@ func (c *ServicePrincipalsClient) Update(ctx context.Context, servicePrincipal S
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Patch(ctx, PatchHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s", *servicePrincipal.ID),
 			HasTenantId: true,
@@ -136,7 +142,8 @@ func (c *ServicePrincipalsClient) Update(ctx context.Context, servicePrincipal S
 // Delete removes a Service Principal.
 func (c *ServicePrincipalsClient) Delete(ctx context.Context, id string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusNoContent},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s", id),
 			HasTenantId: true,
@@ -152,7 +159,8 @@ func (c *ServicePrincipalsClient) Delete(ctx context.Context, id string) (int, e
 // id is the object ID of the service principal.
 func (c *ServicePrincipalsClient) ListOwners(ctx context.Context, id string) (*[]string, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/owners", id),
 			Params:      url.Values{"$select": []string{"id"}},
@@ -188,7 +196,8 @@ func (c *ServicePrincipalsClient) ListOwners(ctx context.Context, id string) (*[
 // ownerId is the object ID of the owning object.
 func (c *ServicePrincipalsClient) GetOwner(ctx context.Context, servicePrincipalId, ownerId string) (*string, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/owners/%s/$ref", servicePrincipalId, ownerId),
 			Params:      url.Values{"$select": []string{"id,url"}},
@@ -228,10 +237,8 @@ func (c *ServicePrincipalsClient) AddOwners(ctx context.Context, servicePrincipa
 	for _, owner := range *servicePrincipal.Owners {
 		// don't fail if an owner already exists
 		checkOwnerAlreadyExists := func(resp *http.Response, o *odata.OData) bool {
-			if resp.StatusCode == http.StatusBadRequest {
-				if o.Error != nil {
-					return o.Error.Match(odata.ErrorAddedObjectReferencesAlreadyExist)
-				}
+			if resp.StatusCode == http.StatusBadRequest && o.Error != nil {
+				return o.Error.Match(odata.ErrorAddedObjectReferencesAlreadyExist)
 			}
 			return false
 		}
@@ -246,9 +253,10 @@ func (c *ServicePrincipalsClient) AddOwners(ctx context.Context, servicePrincipa
 			return status, fmt.Errorf("json.Marshal(): %v", err)
 		}
 		_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
-			Body:             body,
-			ValidStatusCodes: []int{http.StatusNoContent},
-			ValidStatusFunc:  checkOwnerAlreadyExists,
+			Body:                   body,
+			ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+			ValidStatusCodes:       []int{http.StatusNoContent},
+			ValidStatusFunc:        checkOwnerAlreadyExists,
 			Uri: Uri{
 				Entity:      fmt.Sprintf("/servicePrincipals/%s/owners/$ref", *servicePrincipal.ID),
 				HasTenantId: true,
@@ -280,17 +288,16 @@ func (c *ServicePrincipalsClient) RemoveOwners(ctx context.Context, servicePrinc
 
 		// despite the above check, sometimes owners are just gone
 		checkOwnerGone := func(resp *http.Response, o *odata.OData) bool {
-			if resp.StatusCode == http.StatusBadRequest {
-				if o.Error != nil {
-					return o.Error.Match(odata.ErrorRemovedObjectReferencesDoNotExist)
-				}
+			if resp.StatusCode == http.StatusBadRequest && o.Error != nil {
+				return o.Error.Match(odata.ErrorRemovedObjectReferencesDoNotExist)
 			}
 			return false
 		}
 
 		_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-			ValidStatusCodes: []int{http.StatusNoContent},
-			ValidStatusFunc:  checkOwnerGone,
+			ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+			ValidStatusCodes:       []int{http.StatusNoContent},
+			ValidStatusFunc:        checkOwnerGone,
 			Uri: Uri{
 				Entity:      fmt.Sprintf("/servicePrincipals/%s/owners/%s/$ref", servicePrincipalId, ownerId),
 				HasTenantId: true,
@@ -310,7 +317,8 @@ func (c *ServicePrincipalsClient) ListGroupMemberships(ctx context.Context, id s
 		params.Add("$filter", filter)
 	}
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/transitiveMemberOf", id),
 			Params:      params,
@@ -337,13 +345,18 @@ func (c *ServicePrincipalsClient) ListGroupMemberships(ctx context.Context, id s
 // AddPassword appends a new password credential to a Service Principal.
 func (c *ServicePrincipalsClient) AddPassword(ctx context.Context, servicePrincipalId string, passwordCredential PasswordCredential) (*PasswordCredential, int, error) {
 	var status int
-	body, err := json.Marshal(passwordCredential)
+	body, err := json.Marshal(struct {
+		PwdCredential PasswordCredential `json:"passwordCredential"`
+	}{
+		PwdCredential: passwordCredential,
+	})
 	if err != nil {
 		return nil, status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusOK, http.StatusCreated},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK, http.StatusCreated},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/addPassword", servicePrincipalId),
 			HasTenantId: true,
@@ -376,8 +389,9 @@ func (c *ServicePrincipalsClient) RemovePassword(ctx context.Context, servicePri
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusOK, http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK, http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/removePassword", servicePrincipalId),
 			HasTenantId: true,
@@ -393,7 +407,8 @@ func (c *ServicePrincipalsClient) RemovePassword(ctx context.Context, servicePri
 // id is the object ID of the service principal.
 func (c *ServicePrincipalsClient) ListOwnedObjects(ctx context.Context, id string) (*[]string, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/servicePrincipals/%s/ownedObjects", id),
 			Params:      url.Values{"$select": []string{"id"}},
@@ -419,4 +434,93 @@ func (c *ServicePrincipalsClient) ListOwnedObjects(ctx context.Context, id strin
 		ret[i] = v.Id
 	}
 	return &ret, status, nil
+}
+
+// ListAppRoleAssignments retrieves a list of appRoleAssignment that users, groups, or client service principals have been granted for the given resource service principal.
+func (c *ServicePrincipalsClient) ListAppRoleAssignments(ctx context.Context, resourceId string) (*[]AppRoleAssignment, int, error) {
+	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/servicePrincipals/%s/appRoleAssignedTo", resourceId),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return nil, status, fmt.Errorf("ServicePrincipalsClient.BaseClient.Get(): %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, status, fmt.Errorf("ioutil.ReadAll(): %v", err)
+	}
+	var data struct {
+		AppRoleAssignments []AppRoleAssignment `json:"value"`
+	}
+	if err := json.Unmarshal(respBody, &data); err != nil {
+		return nil, status, fmt.Errorf("json.Unmarshal(): %v", err)
+	}
+	return &data.AppRoleAssignments, status, nil
+}
+
+// RemoveAppRoleAssignment deletes an appRoleAssignment that a user, group, or client service principal has been granted for a resource service principal.
+func (c *ServicePrincipalsClient) RemoveAppRoleAssignment(ctx context.Context, resourceId, appRoleAssignmentId string) (int, error) {
+	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/servicePrincipals/%s/appRoleAssignedTo/%s", resourceId, appRoleAssignmentId),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return status, fmt.Errorf("AppRoleAssignmentsClient.BaseClient.Delete(): %v", err)
+	}
+	return status, nil
+}
+
+// AssignAppRoleForResource assigns an app role for a resource service principal, to a user, group, or client service principal.
+// To grant an app role assignment, you need three identifiers:
+//
+// principalId: The id of the user, group or client servicePrincipal to which you are assigning the app role.
+// resourceId: The id of the resource servicePrincipal which has defined the app role.
+// appRoleId: The id of the appRole (defined on the resource service principal) to assign to a user, group, or service principal.
+func (c *ServicePrincipalsClient) AssignAppRoleForResource(ctx context.Context, principalId, resourceId, appRoleId string) (*AppRoleAssignment, int, error) {
+	var status int
+	data := struct {
+		PrincipalId string `json:"principalId"`
+		ResourceId  string `json:"resourceId"`
+		AppRoleId   string `json:"appRoleId"`
+	}{
+		PrincipalId: principalId,
+		ResourceId:  resourceId,
+		AppRoleId:   appRoleId,
+	}
+
+	body, err := json.Marshal(data)
+	if err != nil {
+		return nil, status, fmt.Errorf("json.Marshal(): %v", err)
+	}
+	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusCreated},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/servicePrincipals/%s/appRoleAssignedTo", resourceId),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return nil, status, fmt.Errorf("ServicePrincipalsClient.BaseClient.Post(): %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, status, fmt.Errorf("ioutil.ReadAll(): %v", err)
+	}
+	var appRoleAssignment AppRoleAssignment
+	if err := json.Unmarshal(respBody, &appRoleAssignment); err != nil {
+		return nil, status, fmt.Errorf("json.Unmarshal(): %v", err)
+	}
+	return &appRoleAssignment, status, nil
 }

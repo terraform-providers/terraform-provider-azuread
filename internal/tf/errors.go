@@ -25,7 +25,15 @@ func ErrorDiagPathF(err error, attr string, summary string, a ...interface{}) di
 	return diag.Diagnostics{d}
 }
 
-func ImportAsDuplicateDiag(resourceName, id string, name string) diag.Diagnostics {
+func ImportAsDuplicateError(resourceName, id, name string) error {
+	d := ImportAsDuplicateDiag(resourceName, id, name)
+	if len(d) > 0 {
+		return fmt.Errorf("%s. %s", d[0].Summary, d[0].Detail)
+	}
+	return nil
+}
+
+func ImportAsDuplicateDiag(resourceName, id, name string) diag.Diagnostics {
 	return diag.Diagnostics{diag.Diagnostic{
 		Severity:      diag.Error,
 		Summary:       fmt.Sprintf("An existing %q with name %q (ID: %q) was found and `prevent_duplicate_names` was specified", resourceName, name, id),

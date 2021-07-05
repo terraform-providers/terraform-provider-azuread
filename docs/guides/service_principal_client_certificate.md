@@ -22,7 +22,7 @@ Once you have configured a Service Principal as described in this guide, you sho
 
 ## Setting up an Application and Service Principal
 
-A Service Principal is a security principal within Azure Active Directory which can be granted permissions to manage objects in Azure Active Directory. To authenticate with a Service Principal, you will need to create an Application object within Azure Active Directory, which you will use as a means of authentication, either [using a Client Secret](service_principal_client_secret.html) or a Client Certificate (which is documented in this guide). This can be done using the Azure Portal.
+A Service Principal is a security principal within Azure Active Directory which can be granted permissions to manage objects in Azure Active Directory. To authenticate with a Service Principal, you will need to create an Application object within Azure Active Directory, which you will use as a means of authentication, either using a [Client Secret](service_principal_client_secret.html) or a Client Certificate (which is documented in this guide). This can be done using the Azure Portal.
 
 This guide will cover how to generate a client certificate, how to create an Application and linked Service Principal, and then how to assign the Client Certificate to the Application so that it can be used for authentication.
 
@@ -30,31 +30,24 @@ This guide will cover how to generate a client certificate, how to create an App
 
 ## Generating a Client Certificate
 
-Firstly we need to create a certificate which can be used for authentication. To do that we're going to generate a Certificate Signing Request (also known as a CSR) using `openssl` (this can also be achieved using PowerShell, however that's outside the scope of this document):
+Firstly we need to create a certificate which can be used for authentication. To do that we're going to generate a private key and self-signed certificate using OpenSSL or LibreSSL (this can also be achieved using PowerShell, however that's outside the scope of this document):
 
 ```shell
-$ openssl req -newkey rsa:4096 -nodes -keyout "service-principal.key" -out "service-principal.csr"
+$ openssl req -subj '/CN=myclientcertificate/O=HashiCorp, Inc./ST=CA/C=US' \
+    -new -newkey rsa:4096 -sha256 -days 730 -nodes -x509 -keyout client.key -out client.crt
 ```
 
--> During the generation of the certificate you'll be prompted for various bits of information required for the certificate signing request - at least one item has to be specified for this to complete.
-
-We can now sign that Certificate Signing Request, in this example we're going to self-sign this certificate using the Key we just generated; however it's also possible to do this using a Certificate Authority. In order to do that we're again going to use `openssl`:
+Next we generate a PKCS#12 bundle (.pfx file) which can be used by the AzureAD provider to authenticate with Azure:
 
 ```shell
-$ openssl x509 -signkey "service-principal.key" -in "service-principal.csr" -req -days 365 -out "service-principal.crt"
-```
-
-Finally we can generate a PFX file which can be used to authenticate with Azure:
-
-```shell
-$ openssl pkcs12 -export -out "service-principal.pfx" -inkey "service-principal.key" -in "service-principal.crt"
+$ openssl pkcs12 -export -password pass:"Pa55w0rd123" -out client.pfx -inkey client.key -in client.crt
 ```
 
 Now that we've generated a certificate, we can create the Azure Active Directory Application.
 
 ---
 
-### Creating the Application and Service Principal
+## Creating the Application and Service Principal
 
 We're going to create the Application in the Azure Portal - to do this navigate to the [**Azure Active Directory** overview][azure-portal-aad-overview] within the [Azure Portal][azure-portal] - then select the [**App Registrations** blade][azure-portal-applications-blade]. Click the **New registration** button at the top to add a new Application within Azure Active Directory. On this page, set the following values then press **Create**:
 
@@ -68,43 +61,41 @@ At the top of this page, you'll need to take note of the "Application (client) I
 
 ### Assigning the Client Certificate to the Azure Active Directory Application
 
-To associate the public portion of the Client Certificate (the `*.crt` file) with the Azure Active Directory Application - to do this select **Certificates & secrets**. This screen displays the Certificates and Client Secrets (i.e. passwords) which are associated with this Azure Active Directory Application.
+To associate the public portion of the Client Certificate with the Azure Active Directory Application, select **Certificates & secrets**. This screen displays the Certificates and Client Secrets (i.e. passwords) which are associated with this Azure Active Directory Application.
 
-The Public Key associated with the generated Certificate can be uploaded by selecting **Upload Certificate**, selecting the file which should be uploaded (in the example above, this'd be `service-principal.crt`) - and then hitting **Add**.
+The Public Key associated with the generated Certificate can be uploaded by selecting **Upload Certificate**, selecting the file which should be uploaded (in the example above, this would be `client.crt`) - and then hitting **Add**.
 
 ---
 
-### Configuring the Service Principal in Terraform
+## Configuring Terraform to use the Client Certificate
 
-As we've obtained the credentials for this Service Principal - it's possible to configure them in a few different ways.
+Now that we have our Client Certificate uploaded to Azure and ready to use, it's possible to configure Terraform in a few different ways.
 
-When storing the credentials as Environment Variables, for example:
+### Environment Variables
+
+Our recommended approach is storing the credentials as Environment Variables, for example:
 
 ```bash
+# sh
 $ export ARM_CLIENT_ID="00000000-0000-0000-0000-000000000000"
 $ export ARM_CLIENT_CERTIFICATE_PATH="/path/to/my/client/certificate.pfx"
 $ export ARM_CLIENT_CERTIFICATE_PASSWORD="Pa55w0rd123"
 $ export ARM_TENANT_ID="10000000-2000-3000-4000-500000000000"
+
+# PowerShell
+$env:ARM_CLIENT_ID = "00000000-0000-0000-0000-000000000000"
+$env:ARM_CLIENT_CERTIFICATE_PATH = "/path/to/my/client/certificate.pfx"
+$env:ARM_CLIENT_CERTIFICATE_PASSWORD = "Pa55w0rd123"
+$env:ARM_TENANT_ID = "10000000-2000-3000-4000-500000000000"
 ```
 
-The following Provider block can be specified - where `1.1.0` is the version of the AzureAD Provider that you'd like to use:
-
-```hcl
-provider "azuread" {
-  # Whilst version is optional, we /strongly recommend/ using it to pin the version of the Provider to be used
-  version = "=1.1.0"
-}
-```
-
-More information on [the fields supported in the Provider block can be found here](../index.html#argument-reference).
-
-At this point running either `terraform plan` or `terraform apply` should allow Terraform to run using the Service Principal to authenticate.
+At this point running either `terraform plan` or `terraform apply` should allow Terraform to authenticate using the Client Certificate.
 
 Next you should follow the [Configuring a Service Principal for managing Azure Active Directory](service_principal_configuration.html) guide to grant the Service Principal necessary permissions to create and modify Azure Active Directory objects such as users and groups.
 
----
+### Provider Block
 
-It's also possible to configure these variables either in-line or from using variables in Terraform (as the `client_certificate_path` and `client_certificate_password` are in this example), like so:
+It's also possible to configure these variables either directly, or from variables, in your provider block, like so:
 
 ~> We recommend not defining these variables in-line since they could easily be checked into Source Control.
 
@@ -113,9 +104,6 @@ variable "client_certificate_path" {}
 variable "client_certificate_password" {}
 
 provider "azuread" {
-  # Whilst version is optional, we /strongly recommend/ using it to pin the version of the Provider to be used
-  version = "=1.1.0"
-
   client_id                   = "00000000-0000-0000-0000-000000000000"
   client_certificate_path     = var.client_certificate_path
   client_certificate_password = var.client_certificate_password
@@ -125,7 +113,7 @@ provider "azuread" {
 
 More information on [the fields supported in the Provider block can be found here](../index.html#argument-reference).
 
-At this point running either `terraform plan` or `terraform apply` should allow Terraform to run using the Service Principal to authenticate.
+At this point running either `terraform plan` or `terraform apply` should allow Terraform to authenticate using the Client Certificate.
 
 Next you should follow the [Configuring a Service Principal for managing Azure Active Directory](service_principal_configuration.html) guide to grant the Service Principal necessary permissions to create and modify Azure Active Directory objects such as users and groups.
 

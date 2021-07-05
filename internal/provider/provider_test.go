@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/go-azure-helpers/authentication"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -35,24 +34,14 @@ func TestAccProvider_cliAuth(t *testing.T) {
 
 	// Support only Azure CLI authentication
 	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		environment, aadEnvironment := environment(d.Get("environment").(string))
-
-		aadBuilder := &authentication.Builder{
-			Environment: aadEnvironment,
-			TenantID:    d.Get("tenant_id").(string),
-			TenantOnly:  true,
-
-			SupportsAzureCliToken: true,
-		}
-
 		authConfig := &auth.Config{
-			Environment: environment,
+			Environment: environment(d.Get("environment").(string)),
 			TenantID:    d.Get("tenant_id").(string),
 
 			EnableAzureCliToken: true,
 		}
 
-		return buildClient(ctx, provider, authConfig, aadBuilder, "", true)
+		return buildClient(ctx, provider, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -75,23 +64,10 @@ func TestAccProvider_clientCertificateAuth(t *testing.T) {
 	provider := AzureADProvider()
 	ctx := context.Background()
 
-	// Support only Service Principal authentication (certificate or secret)
+	// Support only client certificate authentication
 	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		environment, aadEnvironment := environment(d.Get("environment").(string))
-
-		aadBuilder := &authentication.Builder{
-			Environment: aadEnvironment,
-			TenantID:    d.Get("tenant_id").(string),
-			ClientID:    d.Get("client_id").(string),
-			TenantOnly:  true,
-
-			SupportsClientCertAuth: true,
-			ClientCertPassword:     d.Get("client_certificate_password").(string),
-			ClientCertPath:         d.Get("client_certificate_path").(string),
-		}
-
 		authConfig := &auth.Config{
-			Environment: environment,
+			Environment: environment(d.Get("environment").(string)),
 			TenantID:    d.Get("tenant_id").(string),
 			ClientID:    d.Get("client_id").(string),
 
@@ -100,7 +76,7 @@ func TestAccProvider_clientCertificateAuth(t *testing.T) {
 			ClientCertPassword:   d.Get("client_certificate_password").(string),
 		}
 
-		return buildClient(ctx, provider, authConfig, aadBuilder, "", true)
+		return buildClient(ctx, provider, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -123,22 +99,10 @@ func TestAccProvider_clientSecretAuth(t *testing.T) {
 	provider := AzureADProvider()
 	ctx := context.Background()
 
-	// Support only Service Principal authentication (certificate or secret)
+	// Support only client secret authentication
 	provider.ConfigureContextFunc = func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		environment, aadEnvironment := environment(d.Get("environment").(string))
-
-		aadBuilder := &authentication.Builder{
-			Environment: aadEnvironment,
-			TenantID:    d.Get("tenant_id").(string),
-			ClientID:    d.Get("client_id").(string),
-			TenantOnly:  true,
-
-			SupportsClientSecretAuth: true,
-			ClientSecret:             d.Get("client_secret").(string),
-		}
-
 		authConfig := &auth.Config{
-			Environment: environment,
+			Environment: environment(d.Get("environment").(string)),
 			TenantID:    d.Get("tenant_id").(string),
 			ClientID:    d.Get("client_id").(string),
 
@@ -146,7 +110,7 @@ func TestAccProvider_clientSecretAuth(t *testing.T) {
 			ClientSecret:           d.Get("client_secret").(string),
 		}
 
-		return buildClient(ctx, provider, authConfig, aadBuilder, "", true)
+		return buildClient(ctx, provider, authConfig, "")
 	}
 
 	d := provider.Configure(ctx, terraform.NewResourceConfigRaw(nil))
@@ -172,12 +136,12 @@ func testCheckProvider(provider *schema.Provider) (errs []error) {
 		errs = append(errs, fmt.Errorf("MsGraphEndpoint was empty in client.Environment"))
 	}
 
-	if client.TenantID == "" {
-		errs = append(errs, fmt.Errorf("client.TenantID was empty"))
-	}
-
 	if client.ClientID == "" {
 		errs = append(errs, fmt.Errorf("client.ClientID was empty"))
+	}
+
+	if client.TenantID == "" {
+		errs = append(errs, fmt.Errorf("client.TenantID was empty"))
 	}
 
 	if client.Claims.TenantId == "" {

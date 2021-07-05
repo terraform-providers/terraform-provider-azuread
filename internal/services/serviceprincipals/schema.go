@@ -4,48 +4,48 @@ import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 func schemaAppRolesComputed() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Computed: true,
+		Description: "",
+		Type:        schema.TypeList,
+		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"id": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "The unique identifier of the app role",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"allowed_member_types": {
-					Type:     schema.TypeSet,
-					Computed: true,
+					Description: "Specifies whether this app role definition can be assigned to users and groups, or to other applications (that are accessing this application in a standalone scenario). Possible values are `User` or `Application`, or both",
+					Type:        schema.TypeList,
+					Computed:    true,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 					},
 				},
 
 				"description": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Description of the app role that appears when the role is being assigned and, if the role functions as an application permissions, during the consent experiences",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"display_name": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Display name for the app role that appears during app role assignment and in consent experiences",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"enabled": {
-					Type:     schema.TypeBool,
-					Computed: true,
-				},
-
-				// TODO: v2.0 remove this
-				"is_enabled": {
-					Type:       schema.TypeBool,
-					Computed:   true,
-					Deprecated: "[NOTE] This attribute will be renamed to `enabled` in version 2.0 of the AzureAD provider",
+					Description: "The unique identifier of the app role",
+					Type:        schema.TypeBool,
+					Computed:    true,
 				},
 
 				"value": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "The value that is used for the `roles` claim in ID tokens and OAuth 2.0 access tokens that are authenticating an assigned service or user principal",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 			},
 		},
@@ -54,102 +54,57 @@ func schemaAppRolesComputed() *schema.Schema {
 
 func schemaOauth2PermissionScopesComputed() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeList,
-		Optional: true,
-		Computed: true,
+		Description: "",
+		Type:        schema.TypeList,
+		Computed:    true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
+				"id": {
+					Description: "The unique identifier of the delegated permission. Must be a valid UUID",
+					Type:        schema.TypeString,
+					Computed:    true,
+				},
+
 				"admin_consent_description": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Delegated permission description that appears in all tenant-wide admin consent experiences, intended to be read by an administrator granting the permission on behalf of all users",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"admin_consent_display_name": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"id": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Display name for the delegated permission, intended to be read by an administrator granting the permission on behalf of all users",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"enabled": {
-					Type:     schema.TypeBool,
-					Computed: true,
+					Description: "Determines if the permission scope is enabled",
+					Type:        schema.TypeBool,
+					Computed:    true,
 				},
 
 				"type": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Whether this delegated permission should be considered safe for non-admin users to consent to on behalf of themselves, or whether an administrator should be required for consent to the permissions. Possible values are `User` or `Admin`",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"user_consent_description": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Delegated permission description that appears in the end user consent experience, intended to be read by a user consenting on their own behalf",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"user_consent_display_name": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "Display name for the delegated permission that appears in the end user consent experience",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 
 				"value": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-			},
-		},
-	}
-}
-
-func schemaOauth2PermissionsComputed() *schema.Schema {
-	// TODO: v2.0 remove this
-	return &schema.Schema{
-		Type:       schema.TypeList,
-		Optional:   true,
-		Computed:   true,
-		Deprecated: "[NOTE] The `oauth2_permissions` block has been renamed to `oauth2_permission_scopes` and moved to the `api` block. `oauth2_permissions` will be removed in version 2.0 of the AzureAD provider.",
-		Elem: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"admin_consent_description": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"admin_consent_display_name": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"id": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"is_enabled": {
-					Type:     schema.TypeBool,
-					Computed: true,
-				},
-
-				"type": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"user_consent_description": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"user_consent_display_name": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
-
-				"value": {
-					Type:     schema.TypeString,
-					Computed: true,
+					Description: "The value that is used for the `scp` claim in OAuth 2.0 access tokens",
+					Type:        schema.TypeString,
+					Computed:    true,
 				},
 			},
 		},

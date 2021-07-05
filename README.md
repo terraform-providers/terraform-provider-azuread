@@ -11,13 +11,22 @@
 ## Usage Example
 
 ```
-# Configure the Azure AD Provider
+# Configure Terraform
+terraform {
+  required_providers {
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.0.0"
+    }
+  }
+}
+
+# Configure the Azure Active Directory Provider
 provider "azuread" {
-  version = "~> 1.0.0"
 
   # NOTE: Environment Variables can also be used for Service Principal authentication
   # Terraform also supports authenticating via the Azure CLI too.
-  # see here for more info: https://terraform.io/docs/providers/azuread/
+  # See official docs for more info: https://registry.terraform.io/providers/hashicorp/azuread/latest/docs
 
   # client_id     = "..."
   # client_secret = "..."
@@ -42,12 +51,12 @@ resource "azuread_service_principal" "example" {
 # Create a user
 resource "azuread_user" "example" {
   user_principal_name = "ExampleUser@${data.azuread_domains.example.domains.0.domain_name}"
-  display_name        = "ExampleUser"
+  display_name        = "Example User"
   password            = "..."
 }
 ```
 
-Further [usage documentation](https://www.terraform.io/docs/providers/azuread/) is available on the Terraform website.
+Further [usage documentation](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs) is available on the Terraform website.
 
 
 ## Developer Requirements

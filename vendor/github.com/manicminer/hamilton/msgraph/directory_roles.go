@@ -50,7 +50,7 @@ func (c *DirectoryRolesClient) List(ctx context.Context) (*[]DirectoryRole, int,
 	return &data.DirectoryRoles, status, nil
 }
 
-// Get retrieves an DirectoryRoles manifest.
+// Get retrieves a DirectoryRole manifest.
 func (c *DirectoryRolesClient) Get(ctx context.Context, id string) (*DirectoryRole, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
 		ValidStatusCodes: []int{http.StatusOK},

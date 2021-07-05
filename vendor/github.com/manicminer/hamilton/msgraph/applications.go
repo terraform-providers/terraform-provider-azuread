@@ -88,9 +88,36 @@ func (c *ApplicationsClient) Create(ctx context.Context, application Application
 // Get retrieves an Application manifest.
 func (c *ApplicationsClient) Get(ctx context.Context, id string) (*Application, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s", id),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return nil, status, fmt.Errorf("ApplicationsClient.BaseClient.Get(): %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, status, fmt.Errorf("ioutil.ReadAll(): %v", err)
+	}
+	var application Application
+	if err := json.Unmarshal(respBody, &application); err != nil {
+		return nil, status, fmt.Errorf("json.Unmarshal(): %v", err)
+	}
+	return &application, status, nil
+}
+
+// GetDeleted retrieves a deleted Application manifest.
+// id is the object ID of the application.
+func (c *ApplicationsClient) GetDeleted(ctx context.Context, id string) (*Application, int, error) {
+	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/directory/deletedItems/%s", id),
 			HasTenantId: true,
 		},
 	})
@@ -120,8 +147,9 @@ func (c *ApplicationsClient) Update(ctx context.Context, application Application
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Patch(ctx, PatchHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s", *application.ID),
 			HasTenantId: true,
@@ -136,7 +164,8 @@ func (c *ApplicationsClient) Update(ctx context.Context, application Application
 // Delete removes an Application.
 func (c *ApplicationsClient) Delete(ctx context.Context, id string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusNoContent},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s", id),
 			HasTenantId: true,
@@ -148,16 +177,92 @@ func (c *ApplicationsClient) Delete(ctx context.Context, id string) (int, error)
 	return status, nil
 }
 
+// DeletePermanently removes a deleted Application permanently.
+// id is the object ID of the application.
+func (c *ApplicationsClient) DeletePermanently(ctx context.Context, id string) (int, error) {
+	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/directory/deletedItems/%s", id),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return status, fmt.Errorf("ApplicationsClient.BaseClient.Delete(): %v", err)
+	}
+	return status, nil
+}
+
+// ListDeleted retrieves a list of recently deleted applications, optionally filtered using OData.
+func (c *ApplicationsClient) ListDeleted(ctx context.Context, filter string) (*[]Application, int, error) {
+	params := url.Values{}
+	if filter != "" {
+		params.Add("$filter", filter)
+	}
+	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
+		ValidStatusCodes: []int{http.StatusOK},
+		Uri: Uri{
+			Entity:      "/directory/deleteditems/microsoft.graph.application",
+			Params:      params,
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return nil, status, err
+	}
+	defer resp.Body.Close()
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	var data struct {
+		DeletedApps []Application `json:"value"`
+	}
+	if err = json.Unmarshal(respBody, &data); err != nil {
+		return nil, status, err
+	}
+	return &data.DeletedApps, status, nil
+}
+
+// RestoreDeleted restores a recently deleted Application.
+// id is the object ID of the application.
+func (c *ApplicationsClient) RestoreDeleted(ctx context.Context, id string) (*Application, int, error) {
+	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/directory/deletedItems/%s/restore", id),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return nil, status, fmt.Errorf("ApplicationsClient.BaseClient.Post(): %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, status, fmt.Errorf("ioutil.ReadAll(): %v", err)
+	}
+	var restoredApplication Application
+	if err = json.Unmarshal(respBody, &restoredApplication); err != nil {
+		return nil, status, fmt.Errorf("json.Unmarshal(): %v", err)
+	}
+	return &restoredApplication, status, nil
+}
+
 // AddPassword appends a new password credential to an Application.
 func (c *ApplicationsClient) AddPassword(ctx context.Context, applicationId string, passwordCredential PasswordCredential) (*PasswordCredential, int, error) {
 	var status int
-	body, err := json.Marshal(passwordCredential)
+	body, err := json.Marshal(struct {
+		PwdCredential PasswordCredential `json:"passwordCredential"`
+	}{
+		PwdCredential: passwordCredential,
+	})
 	if err != nil {
 		return nil, status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusOK, http.StatusCreated},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK, http.StatusCreated},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s/addPassword", applicationId),
 			HasTenantId: true,
@@ -190,8 +295,9 @@ func (c *ApplicationsClient) RemovePassword(ctx context.Context, applicationId s
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusOK, http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK, http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s/removePassword", applicationId),
 			HasTenantId: true,
@@ -207,7 +313,8 @@ func (c *ApplicationsClient) RemovePassword(ctx context.Context, applicationId s
 // id is the object ID of the application.
 func (c *ApplicationsClient) ListOwners(ctx context.Context, id string) (*[]string, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s/owners", id),
 			Params:      url.Values{"$select": []string{"id"}},
@@ -243,7 +350,8 @@ func (c *ApplicationsClient) ListOwners(ctx context.Context, id string) (*[]stri
 // ownerId is the object ID of the owning object.
 func (c *ApplicationsClient) GetOwner(ctx context.Context, applicationId, ownerId string) (*string, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/applications/%s/owners/%s/$ref", applicationId, ownerId),
 			Params:      url.Values{"$select": []string{"id,url"}},
@@ -283,10 +391,8 @@ func (c *ApplicationsClient) AddOwners(ctx context.Context, application *Applica
 	for _, owner := range *application.Owners {
 		// don't fail if an owner already exists
 		checkOwnerAlreadyExists := func(resp *http.Response, o *odata.OData) bool {
-			if resp.StatusCode == http.StatusBadRequest {
-				if o.Error != nil {
-					return o.Error.Match(odata.ErrorAddedObjectReferencesAlreadyExist)
-				}
+			if resp.StatusCode == http.StatusBadRequest && o.Error != nil {
+				return o.Error.Match(odata.ErrorAddedObjectReferencesAlreadyExist)
 			}
 			return false
 		}
@@ -301,9 +407,10 @@ func (c *ApplicationsClient) AddOwners(ctx context.Context, application *Applica
 			return status, fmt.Errorf("json.Marshal(): %v", err)
 		}
 		_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
-			Body:             body,
-			ValidStatusCodes: []int{http.StatusNoContent},
-			ValidStatusFunc:  checkOwnerAlreadyExists,
+			Body:                   body,
+			ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+			ValidStatusCodes:       []int{http.StatusNoContent},
+			ValidStatusFunc:        checkOwnerAlreadyExists,
 			Uri: Uri{
 				Entity:      fmt.Sprintf("/applications/%s/owners/$ref", *application.ID),
 				HasTenantId: true,
@@ -335,18 +442,17 @@ func (c *ApplicationsClient) RemoveOwners(ctx context.Context, applicationId str
 
 		// despite the above check, sometimes owners are just gone
 		checkOwnerGone := func(resp *http.Response, o *odata.OData) bool {
-			if resp.StatusCode == http.StatusBadRequest {
-				if o.Error != nil {
-					return o.Error.Match(odata.ErrorRemovedObjectReferencesDoNotExist)
-				}
+			if resp.StatusCode == http.StatusBadRequest && o.Error != nil {
+				return o.Error.Match(odata.ErrorRemovedObjectReferencesDoNotExist)
 			}
 			return false
 		}
 
 		var err error
 		_, status, _, err = c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-			ValidStatusCodes: []int{http.StatusNoContent},
-			ValidStatusFunc:  checkOwnerGone,
+			ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+			ValidStatusCodes:       []int{http.StatusNoContent},
+			ValidStatusFunc:        checkOwnerGone,
 			Uri: Uri{
 				Entity:      fmt.Sprintf("/applications/%s/owners/%s/$ref", applicationId, ownerId),
 				HasTenantId: true,

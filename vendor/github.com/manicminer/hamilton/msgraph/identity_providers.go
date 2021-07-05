@@ -80,7 +80,8 @@ func (c *IdentityProvidersClient) Create(ctx context.Context, provider IdentityP
 // Get retrieves an IdentityProvider.
 func (c *IdentityProvidersClient) Get(ctx context.Context, id string) (*IdentityProvider, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/identityProviders/%s", id),
 			HasTenantId: true,
@@ -112,8 +113,9 @@ func (c *IdentityProvidersClient) Update(ctx context.Context, provider IdentityP
 		return status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	_, status, _, err = c.BaseClient.Patch(ctx, PatchHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusNoContent},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/identityProviders/%s", *provider.ID),
 			HasTenantId: true,
@@ -128,7 +130,8 @@ func (c *IdentityProvidersClient) Update(ctx context.Context, provider IdentityP
 // Delete removes a IdentityProvider.
 func (c *IdentityProvidersClient) Delete(ctx context.Context, id string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusNoContent},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/identity/identityProviders/%s", id),
 			HasTenantId: true,

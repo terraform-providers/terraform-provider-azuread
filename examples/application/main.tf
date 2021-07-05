@@ -1,7 +1,4 @@
-resource "random_password" "widgets_service" {
-  length  = 32
-  special = true
-}
+resource "random_uuid" "widgets_scope_id" {}
 
 resource "azuread_application" "widgets_service" {
   display_name = "widgets-service"
@@ -9,21 +6,22 @@ resource "azuread_application" "widgets_service" {
 
   identifier_uris = ["api://widgets-service"]
 
-  oauth2_permissions {
-    admin_consent_description  = "Access Widgets Service as a user"
-    admin_consent_display_name = "Access Widgets Service as a user"
-    is_enabled                 = true
-    type                       = "User"
-    user_consent_description   = "Access Widgets Service as a user"
-    user_consent_display_name  = "Access Widgets Service as a user"
-    value                      = "access_as_user"
+  api {
+    oauth2_permission_scope {
+      admin_consent_description  = "Access Widgets Service as a user"
+      admin_consent_display_name = "Access Widgets Service as a user"
+      id                         = random_uuid.widgets_scope_id.result
+      is_enabled                 = true
+      type                       = "User"
+      user_consent_description   = "Access Widgets Service as a user"
+      user_consent_display_name  = "Access Widgets Service as a user"
+      value                      = "access_as_user"
+    }
   }
 }
 
 resource "azuread_application_password" "widgets_service" {
   application_object_id = azuread_application.widgets_service.object_id
-  value                 = random_password.widgets_service.result
-  end_date_relative     = "17520h" # 2 years
 }
 
 resource "azuread_application" "widgets_app" {
@@ -53,7 +51,7 @@ resource "azuread_application" "widgets_app" {
     resource_app_id = azuread_application.widgets_service.application_id
 
     dynamic resource_access {
-      for_each = azuread_application.widgets_service.oauth2_permissions
+      for_each = azuread_application.widgets_service.api.0.oauth2_permission_scope
       iterator = scope
 
       content {

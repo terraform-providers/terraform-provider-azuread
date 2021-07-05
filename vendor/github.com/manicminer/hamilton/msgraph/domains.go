@@ -56,7 +56,8 @@ func (c *DomainsClient) List(ctx context.Context) (*[]Domain, int, error) {
 func (c *DomainsClient) Get(ctx context.Context, id string) (*Domain, int, error) {
 	var status int
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/domains/%s", id),
 			HasTenantId: true,

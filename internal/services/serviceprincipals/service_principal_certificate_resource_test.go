@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
-	"github.com/hashicorp/terraform-provider-azuread/internal/helpers/aadgraph"
 	"github.com/hashicorp/terraform-provider-azuread/internal/services/serviceprincipals/parse"
 	"github.com/hashicorp/terraform-provider-azuread/internal/utils"
 )
@@ -170,44 +169,27 @@ func TestAccServicePrincipalCertificate_requiresImport(t *testing.T) {
 }
 
 func (r ServicePrincipalCertificateResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
+	client := clients.ServicePrincipals.ServicePrincipalsClient
+	client.BaseClient.DisableRetries = true
+
 	id, err := parse.CertificateID(state.ID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing Service Principal Certificate ID: %v", err)
 	}
 
-	if clients.EnableMsGraphBeta {
-		app, status, err := clients.ServicePrincipals.MsClient.Get(ctx, id.ObjectId)
-		if err != nil {
-			if status == http.StatusNotFound {
-				return nil, fmt.Errorf("Service Principal with object ID %q does not exist", id.ObjectId)
-			}
-			return nil, fmt.Errorf("failed to retrieve Service Principal with object ID %q: %+v", id.ObjectId, err)
+	servicePrincipal, status, err := client.Get(ctx, id.ObjectId)
+	if err != nil {
+		if status == http.StatusNotFound {
+			return nil, fmt.Errorf("Service Principal with object ID %q does not exist", id.ObjectId)
 		}
+		return nil, fmt.Errorf("failed to retrieve Service Principal with object ID %q: %+v", id.ObjectId, err)
+	}
 
-		if app.KeyCredentials != nil {
-			for _, cred := range *app.KeyCredentials {
-				if cred.KeyId != nil && *cred.KeyId == id.KeyId {
-					return utils.Bool(true), nil
-				}
+	if servicePrincipal.KeyCredentials != nil {
+		for _, cred := range *servicePrincipal.KeyCredentials {
+			if cred.KeyId != nil && *cred.KeyId == id.KeyId {
+				return utils.Bool(true), nil
 			}
-		}
-	} else {
-		resp, err := clients.ServicePrincipals.AadClient.Get(ctx, id.ObjectId)
-		if err != nil {
-			if utils.ResponseWasNotFound(resp.Response) {
-				return nil, fmt.Errorf("Service Principal with object ID %q does not exist", id.ObjectId)
-			}
-			return nil, fmt.Errorf("failed to retrieve Service Principal with object ID %q: %+v", id.ObjectId, err)
-		}
-
-		credentials, err := clients.ServicePrincipals.AadClient.ListKeyCredentials(ctx, id.ObjectId)
-		if err != nil {
-			return nil, fmt.Errorf("listing Key Credentials for Service Principal %q: %+v", id.ObjectId, err)
-		}
-
-		cred := aadgraph.KeyCredentialResultFindByKeyId(credentials, id.KeyId)
-		if cred != nil {
-			return utils.Bool(true), nil
 		}
 	}
 
@@ -217,7 +199,7 @@ func (r ServicePrincipalCertificateResource) Exists(ctx context.Context, clients
 func (ServicePrincipalCertificateResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_application" "test" {
-  name = "acctestServicePrincipal-%[1]d"
+  display_name = "acctestServicePrincipal-%[1]d"
 }
 
 resource "azuread_service_principal" "test" {

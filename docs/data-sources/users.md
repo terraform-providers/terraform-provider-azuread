@@ -4,9 +4,7 @@ subcategory: "Users"
 
 # Data Source: azuread_users
 
-Gets Object IDs or UPNs for multiple Azure Active Directory users.
-
--> **NOTE:** If you're authenticating using a Service Principal then it must have permissions to `Read directory data` within the `Windows Azure Active Directory` API.
+Gets object IDs or user principal names for multiple Azure Active Directory users.
 
 ## Example Usage
 
@@ -20,10 +18,10 @@ data "azuread_users" "users" {
 
 The following arguments are supported:
 
-* `mail_nicknames` - (Optional) The email aliases of the Azure AD Users.
+* `mail_nicknames` - (Optional) The email aliases of the users.
 * `ignore_missing` - (Optional) Ignore missing users and return users that were found. The data source will still fail if no users are found. Defaults to false.
-* `object_ids` - (Optional) The Object IDs of the Azure AD Users.
-* `user_principal_names` - (Optional) The User Principal Names of the Azure AD Users.
+* `object_ids` - (Optional) The object IDs of the users.
+* `user_principal_names` - (Optional) The user principal names (UPNs) of the users.
 
 ~> **NOTE:** One of `user_principal_names`, `object_ids` or `mail_nicknames` must be specified. These _may_ be specified as an empty list, in which case no results will be returned.
 
@@ -31,23 +29,22 @@ The following arguments are supported:
 
 The following attributes are exported:
 
-* `mail_nicknames` - The email aliases of the Azure AD Users.
-* `object_ids` - The Object IDs of the Azure AD Users.
-* `user_principal_names` - The User Principal Names of the Azure AD Users.
-* `users` - A list of Azure AD Users. Each `user` object provides the attributes documented below.
+* `mail_nicknames` - The email aliases of the users.
+* `object_ids` - The object IDs of the users.
+* `user_principal_names` - The user principal names (UPNs) of the users.
+* `users` - A list of users. Each `user` object provides the attributes documented below.
 
 ___
 
 `user` object exports the following:
 
-* `account_enabled` - `True` if the account is enabled; otherwise `False`.
-* `display_name` - The Display Name of the Azure AD User.
-* `immutable_id` - (**Deprecated**) The value used to associate an on-premises Active Directory user account with their Azure AD user object. Deprecated in favour of `onpremises_immutable_id`.
-* `mail_nickname` - The email alias of the Azure AD User.
-* `mail` - The primary email address of the Azure AD User.
-* `object_id` - The Object ID of the Azure AD User.
+* `account_enabled` - Whether or not the account is enabled.
+* `display_name` - The display name of the user.
+* `mail_nickname` - The email alias of the user.
+* `mail` - The primary email address of the user.
+* `object_id` - The object ID of the user.
 * `onpremises_immutable_id` - The value used to associate an on-premises Active Directory user account with their Azure AD user object.
-* `onpremises_sam_account_name` - The on-premise SAM account name of the Azure AD User.
-* `onpremises_user_principal_name` - The on-premise user principal name of the Azure AD User.
-* `usage_location` - The usage location of the Azure AD User.
-* `user_principal_name` - The User Principal Name of the Azure AD User.
+* `onpremises_sam_account_name` - The on-premise SAM account name of the user.
+* `onpremises_user_principal_name` - The on-premise user principal name of the user.
+* `usage_location` - The usage location of the user.
+* `user_principal_name` - The user principal name (UPN) of the user.

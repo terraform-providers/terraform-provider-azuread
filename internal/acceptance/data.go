@@ -3,11 +3,9 @@ package acceptance
 import (
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 
@@ -36,16 +34,6 @@ type TestData struct {
 	// ResourceType is the Terraform Resource Type - `azuread_application`
 	ResourceType string
 
-	// Environment is a struct containing Details about the Azure Environment
-	// that we're running against
-	Environment azure.Environment
-
-	// EnvironmentName is the name of the Azure Environment where we're running
-	EnvironmentName string
-
-	// MetadataURL is the url of the endpoint where the environment is obtained
-	MetadataURL string
-
 	// resourceLabel is the local used for the resource - generally "test""
 	resourceLabel string
 }
@@ -58,20 +46,12 @@ func (t *TestData) UUID() string {
 func BuildTestData(t *testing.T, resourceType string, resourceLabel string) TestData {
 	EnsureProvidersAreInitialised()
 
-	env, err := Environment()
-	if err != nil {
-		t.Fatalf("retrieving Environment: %+v", err)
-	}
-
 	testData := TestData{
-		RandomInteger:   tf.AccRandTimeInt(),
-		RandomString:    acctest.RandString(5),
-		RandomID:        uuid.New().String(),
-		RandomPassword:  fmt.Sprintf("%s%s", "p@$$Wd", acctest.RandString(6)),
-		ResourceName:    fmt.Sprintf("%s.%s", resourceType, resourceLabel),
-		Environment:     *env,
-		EnvironmentName: env.Name,
-		MetadataURL:     os.Getenv("ARM_METADATA_HOST"),
+		RandomInteger:  tf.AccRandTimeInt(),
+		RandomString:   acctest.RandString(5),
+		RandomID:       uuid.New().String(),
+		RandomPassword: fmt.Sprintf("%s%s", "p@$$Wd", acctest.RandString(6)),
+		ResourceName:   fmt.Sprintf("%s.%s", resourceType, resourceLabel),
 
 		ResourceType:  resourceType,
 		resourceLabel: resourceLabel,

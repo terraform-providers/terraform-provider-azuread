@@ -46,10 +46,11 @@ func (c *DirectoryRoleTemplatesClient) List(ctx context.Context) (*[]DirectoryRo
 	return &data.DirectoryRoleTemplates, status, nil
 }
 
-// Get retrieves an DirectoryRoleTemplates manifest.
+// Get retrieves a DirectoryRoleTemplate manifest.
 func (c *DirectoryRoleTemplatesClient) Get(ctx context.Context, id string) (*DirectoryRoleTemplate, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusOK},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusOK},
 		Uri: Uri{
 			Entity:      fmt.Sprintf("/directoryRoleTemplates/%s", id),
 			HasTenantId: true,

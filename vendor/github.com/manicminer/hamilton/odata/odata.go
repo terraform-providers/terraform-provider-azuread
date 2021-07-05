@@ -10,6 +10,7 @@ const (
 	ErrorAddedObjectReferencesAlreadyExist   = "One or more added object references already exist"
 	ErrorConflictingObjectPresentInDirectory = "A conflicting object with one or more of the specified property values is present in the directory"
 	ErrorRemovedObjectReferencesDoNotExist   = "One or more removed object references do not exist"
+	ErrorServicePrincipalInvalidAppId        = "The appId '.+' of the service principal does not reference a valid application object."
 )
 
 // OData is used to unmarshall OData metadata from an API response.
@@ -66,6 +67,11 @@ type Error struct {
 	RequestId       *string          `json:"request-id"`
 
 	InnerError *Error `json:"innerError"` // nested errors
+
+	Details *[]struct {
+		Code   *string `json:"code"`
+		Target *string `json:"target"`
+	} `json:"details"`
 
 	Values *[]struct {
 		Item  string `json:"item"`

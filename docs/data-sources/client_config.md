@@ -23,6 +23,6 @@ There are no arguments available for this data source.
 
 ## Attributes Reference
 
-* `client_id` is set to the Client ID (Application ID).
-* `object_id` is set to the Object ID of the authenticated principal.
-* `tenant_id` is set to the Tenant ID.
+* `client_id` - The client ID (application ID) linked to the authenticated principal, or the application used for delegated authentication.
+* `object_id` - The object ID of the authenticated principal.
+* `tenant_id` - The tenant ID of the authenticated principal.

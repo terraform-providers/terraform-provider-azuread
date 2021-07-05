@@ -8,24 +8,50 @@ import (
 	"net/http"
 )
 
+type appRoleAssignmentsResourceType string
+
+const (
+	groupsAppRoleAssignmentsResource            appRoleAssignmentsResourceType = "groups"
+	usersAppRoleAssignmentsResource             appRoleAssignmentsResourceType = "users"
+	servicePrincipalsAppRoleAssignmentsResource appRoleAssignmentsResourceType = "servicePrincipals"
+)
+
 // AppRoleAssignmentsClient performs operations on AppRoleAssignments.
 type AppRoleAssignmentsClient struct {
-	BaseClient Client
+	BaseClient   Client
+	resourceType appRoleAssignmentsResourceType
 }
 
-// NewAppRoleAssignmentsClient returns a new AppRoleAssignmentsClient
-func NewAppRoleAssignmentsClient(tenantId string) *AppRoleAssignmentsClient {
+// NewUsersAppRoleAssignmentsClient returns a new AppRoleAssignmentsClient for users assignments
+func NewUsersAppRoleAssignmentsClient(tenantId string) *AppRoleAssignmentsClient {
 	return &AppRoleAssignmentsClient{
-		BaseClient: NewClient(Version10, tenantId),
+		BaseClient:   NewClient(Version10, tenantId),
+		resourceType: usersAppRoleAssignmentsResource,
+	}
+}
+
+// NewGroupsAppRoleAssignmentsClient returns a new AppRoleAssignmentsClient for groups assignments
+func NewGroupsAppRoleAssignmentsClient(tenantId string) *AppRoleAssignmentsClient {
+	return &AppRoleAssignmentsClient{
+		BaseClient:   NewClient(Version10, tenantId),
+		resourceType: groupsAppRoleAssignmentsResource,
+	}
+}
+
+// NewServicePrincipalsAppRoleAssignmentsClient returns a new AppRoleAssignmentsClient for service principal assignments
+func NewServicePrincipalsAppRoleAssignmentsClient(tenantId string) *AppRoleAssignmentsClient {
+	return &AppRoleAssignmentsClient{
+		BaseClient:   NewClient(Version10, tenantId),
+		resourceType: servicePrincipalsAppRoleAssignmentsResource,
 	}
 }
 
 // List returns a list of app role assignments.
-func (c *AppRoleAssignmentsClient) List(ctx context.Context, groupId string) (*[]AppRoleAssignment, int, error) {
+func (c *AppRoleAssignmentsClient) List(ctx context.Context, id string) (*[]AppRoleAssignment, int, error) {
 	resp, status, _, err := c.BaseClient.Get(ctx, GetHttpRequestInput{
 		ValidStatusCodes: []int{http.StatusOK},
 		Uri: Uri{
-			Entity:      fmt.Sprintf("/groups/%s/appRoleAssignments", groupId),
+			Entity:      fmt.Sprintf("/%s/%s/appRoleAssignments", c.resourceType, id),
 			HasTenantId: true,
 		},
 	})
@@ -47,11 +73,12 @@ func (c *AppRoleAssignmentsClient) List(ctx context.Context, groupId string) (*[
 }
 
 // Remove removes a app role assignment.
-func (c *AppRoleAssignmentsClient) Remove(ctx context.Context, groupId, appRoleAssignmentId string) (int, error) {
+func (c *AppRoleAssignmentsClient) Remove(ctx context.Context, id, appRoleAssignmentId string) (int, error) {
 	_, status, _, err := c.BaseClient.Delete(ctx, DeleteHttpRequestInput{
-		ValidStatusCodes: []int{http.StatusNoContent},
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusNoContent},
 		Uri: Uri{
-			Entity:      fmt.Sprintf("/groups/%s/appRoleAssignments/%s", groupId, appRoleAssignmentId),
+			Entity:      fmt.Sprintf("/%s/%s/appRoleAssignments/%s", c.resourceType, id, appRoleAssignmentId),
 			HasTenantId: true,
 		},
 	})
@@ -61,16 +88,16 @@ func (c *AppRoleAssignmentsClient) Remove(ctx context.Context, groupId, appRoleA
 	return status, nil
 }
 
-// Assign assigns an app role to a group.
-func (c *AppRoleAssignmentsClient) Assign(ctx context.Context, groupId, resourceId, appRoleId string) (*AppRoleAssignment, int, error) {
+// Assign assigns an app role to a user, group or service principal depending on client resource type.
+func (c *AppRoleAssignmentsClient) Assign(ctx context.Context, clientServicePrincipalId, resourceServicePrincipalId, appRoleId string) (*AppRoleAssignment, int, error) {
 	var status int
 	data := struct {
 		PrincipalId string `json:"principalId"`
 		ResourceId  string `json:"resourceId"`
 		AppRoleId   string `json:"appRoleId"`
 	}{
-		PrincipalId: groupId,
-		ResourceId:  resourceId,
+		PrincipalId: clientServicePrincipalId,
+		ResourceId:  resourceServicePrincipalId,
 		AppRoleId:   appRoleId,
 	}
 
@@ -79,10 +106,11 @@ func (c *AppRoleAssignmentsClient) Assign(ctx context.Context, groupId, resource
 		return nil, status, fmt.Errorf("json.Marshal(): %v", err)
 	}
 	resp, status, _, err := c.BaseClient.Post(ctx, PostHttpRequestInput{
-		Body:             body,
-		ValidStatusCodes: []int{http.StatusCreated},
+		Body:                   body,
+		ConsistencyFailureFunc: RetryOn404ConsistencyFailureFunc,
+		ValidStatusCodes:       []int{http.StatusCreated},
 		Uri: Uri{
-			Entity:      fmt.Sprintf("/groups/%s/appRoleAssignments", groupId),
+			Entity:      fmt.Sprintf("/%s/%s/appRoleAssignments", c.resourceType, clientServicePrincipalId),
 			HasTenantId: true,
 		},
 	})

@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance"
 	"github.com/hashicorp/terraform-provider-azuread/internal/acceptance/check"
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
-	"github.com/hashicorp/terraform-provider-azuread/internal/helpers/aadgraph"
 	"github.com/hashicorp/terraform-provider-azuread/internal/services/groups/parse"
 	"github.com/hashicorp/terraform-provider-azuread/internal/utils"
 )
@@ -138,39 +137,22 @@ func TestAccGroupMember_requiresImport(t *testing.T) {
 }
 
 func (r GroupMemberResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
+	client := clients.Groups.GroupsClient
+	client.BaseClient.DisableRetries = true
+
 	id, err := parse.GroupMemberID(state.ID)
 	if err != nil {
 		return nil, fmt.Errorf("parsing Group Member ID: %v", err)
 	}
 
-	if clients.EnableMsGraphBeta {
-		members, _, err := clients.Groups.MsClient.ListMembers(ctx, id.GroupId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve Group members (groupId: %q): %+v", id.GroupId, err)
-		}
+	members, _, err := client.ListMembers(ctx, id.GroupId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve Group members (groupId: %q): %+v", id.GroupId, err)
+	}
 
-		if members != nil {
-			for _, objectId := range *members {
-				if strings.EqualFold(objectId, id.MemberId) {
-					return utils.Bool(true), nil
-				}
-			}
-		}
-	} else {
-		if resp, err := clients.Groups.AadClient.Get(ctx, id.GroupId); err != nil {
-			if utils.ResponseWasNotFound(resp.Response) {
-				return nil, fmt.Errorf("Group with object ID %q does not exist", id.GroupId)
-			}
-			return nil, fmt.Errorf("failed to retrieve Group with object ID %q: %+v", id.GroupId, err)
-		}
-
-		members, err := aadgraph.GroupAllMembers(ctx, clients.Groups.AadClient, id.GroupId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve Group members (groupId: %q): %+v", id.GroupId, err)
-		}
-
-		for _, memberId := range members {
-			if memberId == id.MemberId {
+	if members != nil {
+		for _, objectId := range *members {
+			if strings.EqualFold(objectId, id.MemberId) {
 				return utils.Bool(true), nil
 			}
 		}
@@ -182,7 +164,8 @@ func (r GroupMemberResource) Exists(ctx context.Context, clients *clients.Client
 func (GroupMemberResource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_group" "test" {
-  name = "acctestGroup-%[1]d"
+  display_name     = "acctestGroup-%[1]d"
+  security_enabled = true
 }
 `, data.RandomInteger)
 }
@@ -219,7 +202,8 @@ func (r GroupMemberResource) group(data acceptance.TestData) string {
 %[1]s
 
 resource "azuread_group" "member" {
-  name = "acctestGroup-%[2]d-Member"
+  display_name     = "acctestGroup-%[2]d-Member"
+  security_enabled = true
 }
 
 resource "azuread_group_member" "test" {
@@ -234,7 +218,7 @@ func (r GroupMemberResource) servicePrincipal(data acceptance.TestData) string {
 %[1]s
 
 resource "azuread_application" "test" {
-  name = "acctestServicePrincipal-%[2]d"
+  display_name = "acctestServicePrincipal-%[2]d"
 }
 
 resource "azuread_service_principal" "test" {

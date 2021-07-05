@@ -12,26 +12,32 @@ func schemaOptionalClaims() *schema.Schema {
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"name": {
-					Type:     schema.TypeString,
-					Required: true,
+					Description: "The name of the optional claim",
+					Type:        schema.TypeString,
+					Required:    true,
 				},
 
 				"source": {
-					Type:     schema.TypeString,
-					Optional: true,
+					Description: "The source of the claim. If `source` is absent, the claim is a predefined optional claim. If `source` is `user`, the value of `name` is the extension property from the user object",
+					Type:        schema.TypeString,
+					Optional:    true,
 					ValidateFunc: validation.StringInSlice(
 						[]string{"user"},
 						false,
 					),
 				},
+
 				"essential": {
-					Type:     schema.TypeBool,
-					Optional: true,
-					Default:  false,
+					Description: "Whether the claim specified by the client is necessary to ensure a smooth authorization experience",
+					Type:        schema.TypeBool,
+					Optional:    true,
+					Default:     false,
 				},
+
 				"additional_properties": {
-					Type:     schema.TypeList,
-					Optional: true,
+					Description: "List of additional properties of the claim. If a property exists in this list, it modifies the behaviour of the optional claim",
+					Type:        schema.TypeList,
+					Optional:    true,
 					Elem: &schema.Schema{
 						Type: schema.TypeString,
 						ValidateFunc: validation.StringInSlice(

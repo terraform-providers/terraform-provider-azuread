@@ -28,11 +28,9 @@ func (r Registration) SupportedDataSources() map[string]*schema.Resource {
 // SupportedResources returns the supported Resources supported by this Service
 func (r Registration) SupportedResources() map[string]*schema.Resource {
 	return map[string]*schema.Resource{
-		"azuread_application":                         applicationResource(),
-		"azuread_application_app_role":                applicationAppRoleResource(),
-		"azuread_application_certificate":             applicationCertificateResource(),
-		"azuread_application_oauth2_permission":       applicationOAuth2PermissionResource(), // TODO: v2.0 remove this resource
-		"azuread_application_oauth2_permission_scope": applicationOAuth2PermissionScopeResource(),
-		"azuread_application_password":                applicationPasswordResource(),
+		"azuread_application":                applicationResource(),
+		"azuread_application_certificate":    applicationCertificateResource(),
+		"azuread_application_password":       applicationPasswordResource(),
+		"azuread_application_pre_authorized": applicationPreAuthorizedResource(),
 	}
 }

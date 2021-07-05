@@ -23,11 +23,8 @@ func TestAccServicePrincipalDataSource_byApplicationId(t *testing.T) {
 				check.That(data.ResourceName).Key("application_id").Exists(),
 				check.That(data.ResourceName).Key("object_id").Exists(),
 				check.That(data.ResourceName).Key("display_name").Exists(),
-				check.That(data.ResourceName).Key("app_roles.#").HasValue("0"),
-				check.That(data.ResourceName).Key("oauth2_permissions.#").HasValue("1"),
-				check.That(data.ResourceName).Key("oauth2_permissions.0.admin_consent_description").HasValue(
-					fmt.Sprintf("Allow the application to access %s on behalf of the signed-in user.",
-						fmt.Sprintf("acctestServicePrincipal-%d", data.RandomInteger))),
+				check.That(data.ResourceName).Key("app_roles.#").HasValue("2"),
+				check.That(data.ResourceName).Key("oauth2_permission_scopes.#").HasValue("2"),
 			),
 		},
 	})
@@ -44,11 +41,8 @@ func TestAccServicePrincipalDataSource_byDisplayName(t *testing.T) {
 				check.That(data.ResourceName).Key("application_id").Exists(),
 				check.That(data.ResourceName).Key("object_id").Exists(),
 				check.That(data.ResourceName).Key("display_name").Exists(),
-				check.That(data.ResourceName).Key("app_roles.#").HasValue("0"),
-				check.That(data.ResourceName).Key("oauth2_permissions.#").HasValue("1"),
-				check.That(data.ResourceName).Key("oauth2_permissions.0.admin_consent_description").HasValue(
-					fmt.Sprintf("Allow the application to access %s on behalf of the signed-in user.",
-						fmt.Sprintf("acctestServicePrincipal-%d", data.RandomInteger))),
+				check.That(data.ResourceName).Key("app_roles.#").HasValue("2"),
+				check.That(data.ResourceName).Key("oauth2_permission_scopes.#").HasValue("2"),
 			),
 		},
 	})
@@ -65,11 +59,8 @@ func TestAccServicePrincipalDataSource_byObjectId(t *testing.T) {
 				check.That(data.ResourceName).Key("application_id").Exists(),
 				check.That(data.ResourceName).Key("object_id").Exists(),
 				check.That(data.ResourceName).Key("display_name").Exists(),
-				check.That(data.ResourceName).Key("app_roles.#").HasValue("0"),
-				check.That(data.ResourceName).Key("oauth2_permissions.#").HasValue("1"),
-				check.That(data.ResourceName).Key("oauth2_permissions.0.admin_consent_description").HasValue(
-					fmt.Sprintf("Allow the application to access %s on behalf of the signed-in user.",
-						fmt.Sprintf("acctestServicePrincipal-%d", data.RandomInteger))),
+				check.That(data.ResourceName).Key("app_roles.#").HasValue("2"),
+				check.That(data.ResourceName).Key("oauth2_permission_scopes.#").HasValue("2"),
 			),
 		},
 	})
@@ -82,7 +73,7 @@ func (ServicePrincipalDataSource) byApplicationId(data acceptance.TestData) stri
 data "azuread_service_principal" "test" {
   application_id = azuread_service_principal.test.application_id
 }
-`, ServicePrincipalResource{}.basic(data))
+`, ServicePrincipalResource{}.complete(data))
 }
 
 func (ServicePrincipalDataSource) byDisplayName(data acceptance.TestData) string {
@@ -92,7 +83,7 @@ func (ServicePrincipalDataSource) byDisplayName(data acceptance.TestData) string
 data "azuread_service_principal" "test" {
   display_name = azuread_service_principal.test.display_name
 }
-`, ServicePrincipalResource{}.basic(data))
+`, ServicePrincipalResource{}.complete(data))
 }
 
 func (ServicePrincipalDataSource) byObjectId(data acceptance.TestData) string {
@@ -102,5 +93,5 @@ func (ServicePrincipalDataSource) byObjectId(data acceptance.TestData) string {
 data "azuread_service_principal" "test" {
   object_id = azuread_service_principal.test.object_id
 }
-`, ServicePrincipalResource{}.basic(data))
+`, ServicePrincipalResource{}.complete(data))
 }

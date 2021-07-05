@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/go-azure-helpers/authentication"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -14,7 +13,6 @@ import (
 	"github.com/manicminer/hamilton/environments"
 
 	"github.com/hashicorp/terraform-provider-azuread/internal/clients"
-	"github.com/hashicorp/terraform-provider-azuread/internal/tf"
 )
 
 // Microsoft’s Terraform Partner ID is this specific GUID
@@ -84,15 +82,7 @@ func AzureADProvider() *schema.Provider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("ARM_TENANT_ID", ""),
-				Description: "The Tenant ID which should be used. Works with all authentication methods except MSI.",
-			},
-
-			"metadata_host": {
-				Type:        schema.TypeString,
-				Required:    true,
-				DefaultFunc: schema.EnvDefaultFunc("ARM_METADATA_HOSTNAME", ""),
-				Deprecated:  "The `metadata_host` provider attribute is deprecated and will be removed in version 2.0",
-				Description: "The Hostname which should be used for the Azure Metadata Service.",
+				Description: "The Tenant ID which should be used. Works with all authentication methods except Managed Identity.",
 			},
 
 			"environment": {
@@ -132,19 +122,19 @@ func AzureADProvider() *schema.Provider {
 				Description: "Allow Azure CLI to be used for Authentication.",
 			},
 
-			// Managed Service Identity specific fields
+			// Managed Identity specific fields
 			"use_msi": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("ARM_USE_MSI", false),
-				Description: "Allow Managed Service Identity to be used for Authentication.",
+				Description: "Allow Managed Identity to be used for Authentication.",
 			},
 
 			"msi_endpoint": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("ARM_MSI_ENDPOINT", ""),
-				Description: "The path to a custom endpoint for Managed Service Identity - in most circumstances this should be detected automatically. ",
+				Description: "The path to a custom endpoint for Managed Identity - in most circumstances this should be detected automatically. ",
 			},
 
 			// Managed Tracking GUID for User-agent
@@ -162,15 +152,6 @@ func AzureADProvider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("ARM_DISABLE_TERRAFORM_PARTNER_ID", false),
 				Description: "Disable the Terraform Partner ID which is used if a custom `partner_id` isn't specified.",
 			},
-
-			// MS Graph beta
-			// TODO: remove in v2.0
-			"use_microsoft_graph": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				DefaultFunc: schema.EnvDefaultFunc("AAD_USE_MICROSOFT_GRAPH", false),
-				Description: "Beta: Use the Microsoft Graph API, instead of the legacy Azure Active Directory Graph API, where supported.",
-			},
 		},
 
 		ResourcesMap:   resources,
@@ -184,44 +165,18 @@ func AzureADProvider() *schema.Provider {
 
 func providerConfigure(p *schema.Provider) schema.ConfigureContextFunc {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		environment, aadEnvironment := environment(d.Get("environment").(string))
-
-		// Microsoft Graph beta opt-in
-		enableMsGraph := d.Get("use_microsoft_graph").(bool)
-
-		var authConfig *auth.Config
-		if enableMsGraph {
-			authConfig = &auth.Config{
-				Environment:            environment,
-				TenantID:               d.Get("tenant_id").(string),
-				ClientID:               d.Get("client_id").(string),
-				ClientCertPassword:     d.Get("client_certificate_password").(string),
-				ClientCertPath:         d.Get("client_certificate_path").(string),
-				ClientSecret:           d.Get("client_secret").(string),
-				EnableClientCertAuth:   true,
-				EnableClientSecretAuth: true,
-				EnableAzureCliToken:    d.Get("use_cli").(bool),
-				EnableMsiAuth:          d.Get("use_msi").(bool),
-				MsiEndpoint:            d.Get("msi_endpoint").(string),
-			}
-		}
-
-		aadBuilder := &authentication.Builder{
-			ClientID:           d.Get("client_id").(string),
-			ClientSecret:       d.Get("client_secret").(string),
-			TenantID:           d.Get("tenant_id").(string),
-			MetadataHost:       d.Get("metadata_host").(string),
-			Environment:        aadEnvironment,
-			MsiEndpoint:        d.Get("msi_endpoint").(string),
-			ClientCertPassword: d.Get("client_certificate_password").(string),
-			ClientCertPath:     d.Get("client_certificate_path").(string),
-
-			// Feature Toggles
-			SupportsClientCertAuth:         true,
-			SupportsClientSecretAuth:       true,
-			SupportsManagedServiceIdentity: d.Get("use_msi").(bool),
-			SupportsAzureCliToken:          d.Get("use_cli").(bool),
-			TenantOnly:                     true,
+		authConfig := &auth.Config{
+			Environment:            environment(d.Get("environment").(string)),
+			TenantID:               d.Get("tenant_id").(string),
+			ClientID:               d.Get("client_id").(string),
+			ClientCertPassword:     d.Get("client_certificate_password").(string),
+			ClientCertPath:         d.Get("client_certificate_path").(string),
+			ClientSecret:           d.Get("client_secret").(string),
+			EnableClientCertAuth:   true,
+			EnableClientSecretAuth: true,
+			EnableAzureCliToken:    d.Get("use_cli").(bool),
+			EnableMsiAuth:          d.Get("use_msi").(bool),
+			MsiEndpoint:            d.Get("msi_endpoint").(string),
 		}
 
 		// only one pid can be interpreted currently
@@ -232,26 +187,18 @@ func providerConfigure(p *schema.Provider) schema.ConfigureContextFunc {
 			partnerId = terraformPartnerId
 		}
 
-		return buildClient(ctx, p, authConfig, aadBuilder, partnerId, enableMsGraph)
+		return buildClient(ctx, p, authConfig, partnerId)
 	}
 }
 
-// TODO: v2.0 pull out authentication.Builder and derived configuration
-func buildClient(ctx context.Context, p *schema.Provider, authConfig *auth.Config, b *authentication.Builder, partnerId string, enableMsGraph bool) (*clients.Client, diag.Diagnostics) {
-	aadConfig, err := b.Build()
-	if err != nil {
-		return nil, tf.ErrorDiagF(err, "Building AzureAD Client")
-	}
-
+func buildClient(ctx context.Context, p *schema.Provider, authConfig *auth.Config, partnerId string) (*clients.Client, diag.Diagnostics) {
 	clientBuilder := clients.ClientBuilder{
 		AuthConfig:       authConfig,
-		AadAuthConfig:    aadConfig,
-		EnableMsGraph:    enableMsGraph,
 		PartnerID:        partnerId,
 		TerraformVersion: p.TerraformVersion,
 	}
 
-	stopCtx, ok := schema.StopContext(ctx) //nolint:SA1019
+	stopCtx, ok := schema.StopContext(ctx) //nolint:staticcheck
 	if !ok {
 		stopCtx = ctx
 	}
@@ -264,23 +211,18 @@ func buildClient(ctx context.Context, p *schema.Provider, authConfig *auth.Confi
 	return client, nil
 }
 
-func environment(name string) (env environments.Environment, aadEnv string) {
+func environment(name string) (env environments.Environment) {
 	switch name {
 	case "global", "public":
 		env = environments.Global
-		aadEnv = "public"
 	case "usgovernment", "usgovernmentl4":
 		env = environments.USGovernmentL4
-		aadEnv = "usgovernment"
 	case "dod", "usgovernmentl5":
 		env = environments.USGovernmentL5
-		aadEnv = "usgovernment"
 	case "german", "germany":
 		env = environments.Germany
-		aadEnv = "german"
 	case "china":
 		env = environments.China
-		aadEnv = "china"
 	}
 	return
 }

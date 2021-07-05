@@ -43,15 +43,8 @@ resource "azuread_application_certificate" "example" {
   value                 = tls_self_signed_cert.example.cert_pem
 }
 
-# Generate random password to be used for Application password (client secret)
-resource "random_password" "example" {
-  length  = 32
-  special = true
-}
-
 # Create Application password (client secret)
 resource "azuread_application_password" "example" {
   application_object_id = azuread_application.example.object_id
-  value                 = random_password.example.result
   end_date_relative     = "4320h" # expire in 6 months
 }

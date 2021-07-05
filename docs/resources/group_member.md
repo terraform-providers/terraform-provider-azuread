@@ -4,9 +4,9 @@ subcategory: "Groups"
 
 # Resource: azuread_group_member
 
-Manages a single Group Membership within Azure Active Directory.
+Manages a single group membership within Azure Active Directory.
 
--> **NOTE:** Do not use this resource at the same time as `azuread_group.members`.
+-> **Warning** Do not use this resource at the same time as the `members` property of the `azuread_group` resource.
 
 ## Example Usage
 
@@ -17,7 +17,8 @@ data "azuread_user" "example" {
 }
 
 resource "azuread_group" "example" {
-  name = "my_group"
+  display_name     = "my_group"
+  security_enabled = true
 }
 
 resource "azuread_group_member" "example" {
@@ -30,10 +31,8 @@ resource "azuread_group_member" "example" {
 
 The following arguments are supported:
 
-* `group_object_id` - (Required) The Object ID of the Azure AD Group you want to add the Member to.  Changing this forces a new resource to be created.
-* `member_object_id` - (Required) The Object ID of the Azure AD Object you want to add as a Member to the Group. Supported Object types are Users, Groups or Service Principals. Changing this forces a new resource to be created.
-
--> **NOTE:** The Member object has to be present in your Azure Active Directory, either as a Member or a Guest.
+* `group_object_id` - (Required) The object ID of the group you want to add the member to. Changing this forces a new resource to be created.
+* `member_object_id` - (Required) The object ID of the principal you want to add as a member to the group. Supported object types are Users, Groups or Service Principals. Changing this forces a new resource to be created.
 
 ## Attributes Reference
 
@@ -43,7 +42,7 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-Azure Active Directory Group Members can be imported using the `object id`, e.g.
+Group members can be imported using the object ID of the group and the object ID of the member, e.g.
 
 ```shell
 terraform import azuread_group_member.test 00000000-0000-0000-0000-000000000000/member/11111111-1111-1111-1111-111111111111

@@ -9,13 +9,17 @@ import (
 // cachedAuthorizer caches a token until it expires, then acquires a new token from source
 type cachedAuthorizer struct {
 	source Authorizer
-	mutex  sync.Mutex
+	mutex  sync.RWMutex
 	token  *oauth2.Token
 }
 
 // Token returns the current token if it's still valid, else will acquire a new token
 func (c *cachedAuthorizer) Token() (*oauth2.Token, error) {
-	if c.token == nil || !c.token.Valid() {
+	c.mutex.RLock()
+	valid := c.token != nil && c.token.Valid()
+	c.mutex.RUnlock()
+
+	if !valid {
 		c.mutex.Lock()
 		defer c.mutex.Unlock()
 		token, err := c.source.Token()
@@ -24,6 +28,7 @@ func (c *cachedAuthorizer) Token() (*oauth2.Token, error) {
 		}
 		c.token = token
 	}
+
 	return c.token, nil
 }
 
