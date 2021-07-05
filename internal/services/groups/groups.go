@@ -10,6 +10,22 @@ import (
 	"github.com/manicminer/hamilton/odata"
 )
 
+func flattenGroupResourceBehaviorOptions(in []msgraph.GroupResourceBehaviorOption) []string {
+	out := make([]string, 0)
+	for _, v := range in {
+		out = append(out, string(v))
+	}
+	return out
+}
+
+func flattenGroupResourceProvisioningOptions(in []msgraph.GroupResourceProvisioningOption) []string {
+	out := make([]string, 0)
+	for _, v := range in {
+		out = append(out, string(v))
+	}
+	return out
+}
+
 func groupDefaultMailNickname() string {
 	charSet := "0123456789abcdef"
 	result := make([]byte, 9)

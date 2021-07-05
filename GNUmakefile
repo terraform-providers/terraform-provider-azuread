@@ -98,7 +98,7 @@ todo:
 
 docs-lint:
 	@echo "==> Checking documentation spelling..."
-	@misspell -error -source=text -i hdinsight -locale UK docs/
+	@misspell -error -source=text -i hdinsight docs/
 	@echo "==> Checking documentation for errors..."
 	@tfproviderdocs check -provider-name=azuread -allowed-guide-subcategories="Authentication,Upgrade Guides" -enable-contents-check -require-schema-ordering -require-guide-subcategory -require-resource-subcategory
 	@sh -c "'$(CURDIR)/scripts/terrafmt-docs.sh'"

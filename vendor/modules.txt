@@ -187,7 +187,7 @@ github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/manicminer/hamilton v0.20.0
+# github.com/manicminer/hamilton v0.20.0 => /Users/tom/go/src/github.com/manicminer/hamilton
 ## explicit
 github.com/manicminer/hamilton/auth
 github.com/manicminer/hamilton/environments
@@ -301,6 +301,11 @@ golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.6
+## explicit
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -442,3 +447,4 @@ google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
 google.golang.org/protobuf/types/pluginpb
+# github.com/manicminer/hamilton => /Users/tom/go/src/github.com/manicminer/hamilton

@@ -89,6 +89,41 @@ const (
 	GroupMembershipClaimSecurityGroup    GroupMembershipClaim = "SecurityGroup"
 )
 
+type GroupResourceBehaviorOption string
+
+const (
+	GroupResourceBehaviorOptionAllowOnlyMembersToPost   GroupResourceBehaviorOption = "AllowOnlyMembersToPost"
+	GroupResourceBehaviorOptionHideGroupInOutlook       GroupResourceBehaviorOption = "HideGroupInOutlook"
+	GroupResourceBehaviorOptionSubscribeNewGroupMembers GroupResourceBehaviorOption = "SubscribeNewGroupMembers"
+	GroupResourceBehaviorOptionWelcomeEmailDisabled     GroupResourceBehaviorOption = "WelcomeEmailDisabled"
+)
+
+type GroupResourceProvisioningOption string
+
+const (
+	GroupResourceProvisioningOptionTeam GroupResourceProvisioningOption = "Team"
+)
+
+type GroupTheme StringNullWhenEmpty
+
+const (
+	GroupThemeBlue   GroupTheme = "Blue"
+	GroupThemeGreen  GroupTheme = "Green"
+	GroupThemeOrange GroupTheme = "Orange"
+	GroupThemePink   GroupTheme = "Pink"
+	GroupThemePurple GroupTheme = "Purple"
+	GroupThemeRed    GroupTheme = "Red"
+	GroupThemeTeal   GroupTheme = "Teal"
+)
+
+type GroupVisibility StringNullWhenEmpty
+
+const (
+	GroupVisibilityHiddenMembership GroupVisibility = "Hiddenmembership"
+	GroupVisibilityPrivate          GroupVisibility = "Private"
+	GroupVisibilityPublic           GroupVisibility = "Public"
+)
+
 type KeyCredentialType string
 
 const (

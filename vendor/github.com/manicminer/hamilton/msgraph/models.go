@@ -542,11 +542,13 @@ type Group struct {
 	PreferredLanguage             *string                             `json:"preferredLanguage,omitempty"`
 	ProxyAddresses                *[]string                           `json:"proxyAddresses,omitempty"`
 	RenewedDateTime               *time.Time                          `json:"renewedDateTime,omitempty"`
+	ResourceBehaviorOptions       []GroupResourceBehaviorOption       `json:"resourceBehaviorOptions,omitempty"`
+	ResourceProvisioningOptions   []GroupResourceProvisioningOption   `json:"resourceProvisioningOptions,omitempty"`
 	SecurityEnabled               *bool                               `json:"securityEnabled,omitempty"`
 	SecurityIdentifier            *string                             `json:"securityIdentifier,omitempty"`
-	Theme                         *string                             `json:"theme,omitempty"`
+	Theme                         *GroupTheme                         `json:"theme,omitempty"`
 	UnseenCount                   *int                                `json:"unseenCount,omitempty"`
-	Visibility                    *string                             `json:"visibility,omitempty"`
+	Visibility                    *GroupVisibility                    `json:"visibility,omitempty"`
 	IsAssignableToRole            *bool                               `json:"isAssignableToRole,omitempty"`
 
 	Members *[]string `json:"members@odata.bind,omitempty"`

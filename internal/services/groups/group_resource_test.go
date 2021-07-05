@@ -92,6 +92,21 @@ func TestAccGroup_assignableToRole(t *testing.T) {
 	})
 }
 
+func TestAccGroup_behaviors(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_group", "test")
+	r := GroupResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.behaviors(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccGroup_owners(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azuread_group", "test")
 	r := GroupResource{}
@@ -285,6 +300,43 @@ func TestAccGroup_preventDuplicateNamesFail(t *testing.T) {
 	})
 }
 
+func TestAccGroup_provisioning(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_group", "test")
+	r := GroupResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.provisioning(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
+func TestAccGroup_visibility(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azuread_group", "test")
+	r := GroupResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.visibility(data, "Private"),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+		{
+			Config: r.visibility(data, "Public"),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func (r GroupResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
 	client := clients.Groups.GroupsClient
 	client.BaseClient.DisableRetries = true
@@ -370,6 +422,7 @@ resource "azuread_group" "test" {
   mail_enabled     = true
   mail_nickname    = "acctestGroup-%[1]d"
   security_enabled = true
+  theme            = "Pink"
 }
 `, data.RandomInteger)
 }
@@ -395,6 +448,7 @@ resource "azuread_group" "test" {
   security_enabled = true
   members          = [azuread_user.test.object_id]
   owners           = [azuread_user.test.object_id]
+  theme            = "Purple"
 }
 `, data.RandomInteger, data.RandomPassword)
 }
@@ -407,6 +461,49 @@ resource "azuread_group" "test" {
   security_enabled   = true
 }
 `, data.RandomInteger)
+}
+
+func (GroupResource) behaviors(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azuread_group" "test" {
+  display_name  = "acctestGroup-behaviors-%[1]d"
+  mail_enabled  = true
+  mail_nickname = "acctestGroup-behaviors-%[1]d"
+  types         = ["Unified"]
+
+  behaviors = [
+    "AllowOnlyMembersToPost",
+    "HideGroupInOutlook",
+    "SubscribeNewGroupMembers",
+    "WelcomeEmailDisabled"
+  ]
+}
+`, data.RandomInteger)
+}
+
+func (GroupResource) provisioning(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+resource "azuread_group" "test" {
+  display_name  = "acctestGroup-behaviors-%[1]d"
+  mail_enabled  = true
+  mail_nickname = "acctestGroup-behaviors-%[1]d"
+  types         = ["Unified"]
+
+  provisioning_options = ["Team"]
+}
+`, data.RandomInteger)
+}
+
+func (GroupResource) visibility(data acceptance.TestData, visibility string) string {
+	return fmt.Sprintf(`
+resource "azuread_group" "test" {
+  display_name  = "acctestGroup-visibility-%[1]d"
+  mail_enabled  = true
+  mail_nickname = "acctestGroup-visibility-%[1]d"
+  types         = ["Unified"]
+  visibility    = "%[2]s"
+}
+`, data.RandomInteger, visibility)
 }
 
 func (GroupResource) noMembers(data acceptance.TestData) string {
@@ -426,7 +523,11 @@ func (r GroupResource) withDiverseMembers(data acceptance.TestData) string {
 resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[2]d"
   security_enabled = true
-  members          = [azuread_user.test.object_id, azuread_group.member.object_id, azuread_service_principal.test.object_id]
+  members = [
+    azuread_user.test.object_id,
+    azuread_group.member.object_id,
+    azuread_service_principal.test.object_id
+  ]
 }
 `, r.templateDiverseDirectoryObjects(data), data.RandomInteger)
 }
@@ -438,7 +539,10 @@ func (r GroupResource) withDiverseOwners(data acceptance.TestData) string {
 resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[2]d"
   security_enabled = true
-  owners           = [azuread_user.test.object_id, azuread_service_principal.test.object_id]
+  owners = [
+    azuread_user.test.object_id,
+    azuread_service_principal.test.object_id
+  ]
 }
 `, r.templateDiverseDirectoryObjects(data), data.RandomInteger)
 }
@@ -474,7 +578,11 @@ func (r GroupResource) withThreeMembers(data acceptance.TestData) string {
 resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[2]d"
   security_enabled = true
-  members          = [azuread_user.testA.object_id, azuread_user.testB.object_id, azuread_user.testC.object_id]
+  members = [
+    azuread_user.testA.object_id,
+    azuread_user.testB.object_id,
+    azuread_user.testC.object_id
+  ]
 }
 `, r.templateThreeUsers(data), data.RandomInteger)
 }
@@ -486,7 +594,11 @@ func (r GroupResource) withThreeOwners(data acceptance.TestData) string {
 resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[2]d"
   security_enabled = true
-  owners           = [azuread_user.testA.object_id, azuread_user.testB.object_id, azuread_user.testC.object_id]
+  owners = [
+    azuread_user.testA.object_id,
+    azuread_user.testB.object_id,
+    azuread_user.testC.object_id
+  ]
 }
 `, r.templateThreeUsers(data), data.RandomInteger)
 }
@@ -499,7 +611,10 @@ resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[2]d"
   security_enabled = true
   owners           = [azuread_user.testA.object_id]
-  members          = [azuread_user.testB.object_id, azuread_user.testC.object_id]
+  members = [
+    azuread_user.testB.object_id,
+    azuread_user.testC.object_id
+  ]
 }
 `, r.templateThreeUsers(data), data.RandomInteger)
 }

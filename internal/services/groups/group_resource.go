@@ -61,16 +61,26 @@ func groupResource() *schema.Resource {
 				ForceNew:    true,
 			},
 
+			"behaviors": {
+				Description: "The group behaviors for a Microsoft 365 group",
+				Type:        schema.TypeSet,
+				Optional:    true,
+				ForceNew:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						string(msgraph.GroupResourceBehaviorOptionAllowOnlyMembersToPost),
+						string(msgraph.GroupResourceBehaviorOptionHideGroupInOutlook),
+						string(msgraph.GroupResourceBehaviorOptionSubscribeNewGroupMembers),
+						string(msgraph.GroupResourceBehaviorOptionWelcomeEmailDisabled),
+					}, false),
+				},
+			},
+
 			"description": {
 				Description: "The description for the group",
 				Type:        schema.TypeString,
 				Optional:    true,
-			},
-
-			"mail": {
-				Description: "The SMTP address for the group",
-				Type:        schema.TypeString,
-				Computed:    true,
 			},
 
 			"mail_enabled": {
@@ -120,11 +130,40 @@ func groupResource() *schema.Resource {
 				Default:     false,
 			},
 
+			"provisioning_options": {
+				Description: "The group provisioning options for a Microsoft 365 group",
+				Type:        schema.TypeSet,
+				Optional:    true,
+				ForceNew:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateFunc: validation.StringInSlice([]string{
+						string(msgraph.GroupResourceProvisioningOptionTeam),
+					}, false),
+				},
+			},
+
 			"security_enabled": {
 				Description:  "Whether the group is a security group for controlling access to in-app resources. At least one of `security_enabled` or `mail_enabled` must be specified. A group can be security enabled _and_ mail enabled",
 				Type:         schema.TypeBool,
 				Optional:     true,
 				AtLeastOneOf: []string{"mail_enabled", "security_enabled"},
+			},
+
+			"theme": {
+				Description: "The colour theme for a Microsoft 365 group",
+				Type:        schema.TypeString,
+				Optional:    true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(msgraph.GroupThemeNone),
+					string(msgraph.GroupThemeBlue),
+					string(msgraph.GroupThemeGreen),
+					string(msgraph.GroupThemeOrange),
+					string(msgraph.GroupThemePink),
+					string(msgraph.GroupThemePurple),
+					string(msgraph.GroupThemeRed),
+					string(msgraph.GroupThemeTeal),
+				}, false),
 			},
 
 			"types": {
@@ -140,10 +179,73 @@ func groupResource() *schema.Resource {
 				},
 			},
 
+			"visibility": {
+				Description: "Specifies the group join policy and group content visibility",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				ValidateFunc: validation.StringInSlice([]string{
+					string(msgraph.GroupVisibilityHiddenMembership),
+					string(msgraph.GroupVisibilityPrivate),
+					string(msgraph.GroupVisibilityPublic),
+				}, false),
+			},
+
+			"mail": {
+				Description: "The SMTP address for the group",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
 			"object_id": {
 				Description: "The object ID of the group",
 				Type:        schema.TypeString,
 				Computed:    true,
+			},
+
+			"onpremises_domain_name": {
+				Description: "The on-premises FQDN, also called dnsDomainName, synchronized from the on-premises directory when Azure AD Connect is used",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
+			"onpremises_netbios_name": {
+				Description: "The on-premises NetBIOS name, synchronized from the on-premises directory when Azure AD Connect is used",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
+			"onpremises_sam_account_name": {
+				Description: "The on-premises SAM account name, synchronized from the on-premises directory when Azure AD Connect is used",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
+			"onpremises_security_identifier": {
+				Description: "The on-premises security identifier (SID), synchronized from the on-premises directory when Azure AD Connect is used",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
+			"onpremises_sync_enabled": {
+				Description: "Whether this group is synchronized from an on-premises directory (true), no longer synchronized (false), or has never been synchronized (null)",
+				Type:        schema.TypeBool,
+				Computed:    true,
+			},
+
+			"preferred_language": {
+				Description: "The preferred language for a Microsoft 365 group, in ISO 639-1 notation",
+				Type:        schema.TypeString,
+				Computed:    true, // API always returns "preferredLanguage should not be set"
+			},
+
+			"proxy_addresses": {
+				Description: "Email addresses for the group that direct to the same group mailbox",
+				Type:        schema.TypeList,
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 		},
 	}
@@ -202,6 +304,31 @@ func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, 
 		return fmt.Errorf("`assignable_to_role` can only be `true` for security-enabled groups")
 	}
 
+	visibilityOld, visibilityNew := diff.GetChange("visibility")
+
+	if !hasGroupType(msgraph.GroupTypeUnified) {
+		if behaviors, ok := diff.GetOk("behaviors"); ok && len(behaviors.(*schema.Set).List()) > 0 {
+			return fmt.Errorf("`behaviors` is only supported for unified groups")
+		}
+
+		if provisioning, ok := diff.GetOk("provisioning_options"); ok && len(provisioning.(*schema.Set).List()) > 0 {
+			return fmt.Errorf("`provisioning_options` is only supported for unified groups")
+		}
+
+		if theme := diff.Get("theme"); theme.(string) != "" {
+			return fmt.Errorf("`theme` is only supported for unified groups")
+		}
+
+		if visibilityNew.(string) == string(msgraph.GroupVisibilityHiddenMembership) {
+			return fmt.Errorf("`visibility` can only be %q for unified groups", msgraph.GroupVisibilityHiddenMembership)
+		}
+	}
+
+	if (visibilityOld.(string) == string(msgraph.GroupVisibilityPrivate) || visibilityOld.(string) == string(msgraph.GroupVisibilityPublic)) &&
+		visibilityNew.(string) == string(msgraph.GroupVisibilityHiddenMembership) {
+		diff.ForceNew("visibility")
+	}
+
 	return nil
 }
 
@@ -239,14 +366,34 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		mailNickname = d.Get("mail_nickname").(string)
 	}
 
+	behaviorOptions := make([]msgraph.GroupResourceBehaviorOption, 0)
+	for _, v := range d.Get("behaviors").(*schema.Set).List() {
+		behaviorOptions = append(behaviorOptions, msgraph.GroupResourceBehaviorOption(v.(string)))
+	}
+
+	provisioningOptions := make([]msgraph.GroupResourceProvisioningOption, 0)
+	for _, v := range d.Get("provisioning_options").(*schema.Set).List() {
+		provisioningOptions = append(provisioningOptions, msgraph.GroupResourceProvisioningOption(v.(string)))
+	}
+
 	properties := msgraph.Group{
-		Description:        utils.NullableString(d.Get("description").(string)),
-		DisplayName:        utils.String(displayName),
-		GroupTypes:         groupTypes,
-		IsAssignableToRole: utils.Bool(d.Get("assignable_to_role").(bool)),
-		MailEnabled:        utils.Bool(mailEnabled),
-		MailNickname:       utils.String(mailNickname),
-		SecurityEnabled:    utils.Bool(securityEnabled),
+		Description:                 utils.NullableString(d.Get("description").(string)),
+		DisplayName:                 utils.String(displayName),
+		GroupTypes:                  groupTypes,
+		IsAssignableToRole:          utils.Bool(d.Get("assignable_to_role").(bool)),
+		MailEnabled:                 utils.Bool(mailEnabled),
+		MailNickname:                utils.String(mailNickname),
+		ResourceBehaviorOptions:     behaviorOptions,
+		ResourceProvisioningOptions: provisioningOptions,
+		SecurityEnabled:             utils.Bool(securityEnabled),
+	}
+
+	if theme := d.Get("theme").(string); theme != "" {
+		properties.Theme = utils.NullableString(theme)
+	}
+
+	if visibility := d.Get("visibility").(string); visibility != "" {
+		properties.Visibility = utils.String(visibility)
 	}
 
 	// Add the caller as the group owner to prevent lock-out after creation
@@ -337,6 +484,14 @@ func groupResourceUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		SecurityEnabled: utils.Bool(d.Get("security_enabled").(bool)),
 	}
 
+	if theme := d.Get("theme").(string); theme != "" {
+		group.Theme = utils.NullableString(theme)
+	}
+
+	if d.HasChange("visibility") {
+		group.Visibility = utils.String(d.Get("visibility").(string))
+	}
+
 	if _, err := client.Update(ctx, group); err != nil {
 		return tf.ErrorDiagF(err, "Updating group with ID: %q", d.Id())
 	}
@@ -414,14 +569,25 @@ func groupResourceRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	tf.Set(d, "assignable_to_role", group.IsAssignableToRole)
+	tf.Set(d, "behaviors", flattenGroupResourceBehaviorOptions(group.ResourceBehaviorOptions))
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
 	tf.Set(d, "mail_enabled", group.MailEnabled)
 	tf.Set(d, "mail", group.Mail)
 	tf.Set(d, "mail_nickname", group.MailNickname)
 	tf.Set(d, "object_id", group.ID)
+	tf.Set(d, "onpremises_domain_name", group.OnPremisesDomainName)
+	tf.Set(d, "onpremises_netbios_name", group.OnPremisesNetBiosName)
+	tf.Set(d, "onpremises_sam_account_name", group.OnPremisesSamAccountName)
+	tf.Set(d, "onpremises_security_identifier", group.OnPremisesSecurityIdentifier)
+	tf.Set(d, "onpremises_sync_enabled", group.OnPremisesSyncEnabled)
+	tf.Set(d, "preferred_language", group.PreferredLanguage)
+	tf.Set(d, "provisioning_options", flattenGroupResourceProvisioningOptions(group.ResourceProvisioningOptions))
+	tf.Set(d, "proxy_addresses", tf.FlattenStringSlicePtr(group.ProxyAddresses))
 	tf.Set(d, "security_enabled", group.SecurityEnabled)
+	tf.Set(d, "theme", group.Theme)
 	tf.Set(d, "types", group.GroupTypes)
+	tf.Set(d, "visibility", group.Visibility)
 
 	owners, _, err := client.ListOwners(ctx, *group.ID)
 	if err != nil {
