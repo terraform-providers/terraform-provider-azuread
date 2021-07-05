@@ -23,6 +23,7 @@ resource "azuread_group" "example" {
 resource "azuread_group" "example" {
   display_name     = "example"
   mail_enabled     = true
+  mail_nickname    = "ExampleGroup"
   security_enabled = true
   types            = ["Unified"]
 }
@@ -56,6 +57,7 @@ The following arguments are supported:
 * `description` - (Optional) The description for the group.
 * `display_name` - (Required) The display name for the group.
 * `mail_enabled` - (Optional) Whether the group is a mail enabled, with a shared group mailbox. At least one of `mail_enabled` or `security_enabled` must be specified. A group can be mail enabled _and_ security enabled.
+* `mail_nickname` - (Optional) The mail alias for the group, unique in the organisation. Required for mail-enabled groups. Changing this forces a new resource to be created.
 * `members` - (Optional) A set of members who should be present in this group. Supported object types are Users, Groups or Service Principals.
 * `owners` - (Optional) A set of owners who own this group. Supported object types are Users or Service Principals.
 * `prevent_duplicate_names` - (Optional) If `true`, will return an error if an existing group is found with the same name. Defaults to `false`.
@@ -70,6 +72,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
+* `mail` - The SMTP address for the group.
 * `object_id` - The object ID of the group.
 
 ## Import

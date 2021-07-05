@@ -67,11 +67,26 @@ func groupResource() *schema.Resource {
 				Optional:    true,
 			},
 
+			"mail": {
+				Description: "The SMTP address for the group",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
 			"mail_enabled": {
 				Description:  "Whether the group is a mail enabled, with a shared group mailbox. At least one of `mail_enabled` or `security_enabled` must be specified. A group can be mail enabled _and_ security enabled",
 				Type:         schema.TypeBool,
 				Optional:     true,
 				AtLeastOneOf: []string{"mail_enabled", "security_enabled"},
+			},
+
+			"mail_nickname": {
+				Description:      "The mail alias for the group, unique in the organisation",
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: validate.MailNickname,
 			},
 
 			"members": {
@@ -179,6 +194,10 @@ func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, 
 		return fmt.Errorf("`mail_enabled` must be true for unified groups")
 	}
 
+	if mailNickname := diff.Get("mail_nickname").(string); mailEnabled && mailNickname == "" {
+		return fmt.Errorf("`mail_nickname` is required for mail-enabled groups")
+	}
+
 	if diff.Get("assignable_to_role").(bool) && !securityEnabled {
 		return fmt.Errorf("`assignable_to_role` can only be `true` for security-enabled groups")
 	}
@@ -206,14 +225,18 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		}
 	}
 
-	mailNickname, err := uuid.GenerateUUID()
-	if err != nil {
-		return tf.ErrorDiagF(err, "Failed to generate mailNickname")
-	}
-
 	groupTypes := make([]msgraph.GroupType, 0)
 	for _, v := range d.Get("types").(*schema.Set).List() {
 		groupTypes = append(groupTypes, msgraph.GroupType(v.(string)))
+	}
+
+	mailEnabled := d.Get("mail_enabled").(bool)
+	securityEnabled := d.Get("security_enabled").(bool)
+
+	// Mimic the portal and generate a random mailNickname for security groups
+	mailNickname := groupDefaultMailNickname()
+	if mailEnabled {
+		mailNickname = d.Get("mail_nickname").(string)
 	}
 
 	properties := msgraph.Group{
@@ -221,9 +244,9 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		DisplayName:        utils.String(displayName),
 		GroupTypes:         groupTypes,
 		IsAssignableToRole: utils.Bool(d.Get("assignable_to_role").(bool)),
-		MailEnabled:        utils.Bool(d.Get("mail_enabled").(bool)),
+		MailEnabled:        utils.Bool(mailEnabled),
 		MailNickname:       utils.String(mailNickname),
-		SecurityEnabled:    utils.Bool(d.Get("security_enabled").(bool)),
+		SecurityEnabled:    utils.Bool(securityEnabled),
 	}
 
 	// Add the caller as the group owner to prevent lock-out after creation
@@ -394,6 +417,8 @@ func groupResourceRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
 	tf.Set(d, "mail_enabled", group.MailEnabled)
+	tf.Set(d, "mail", group.Mail)
+	tf.Set(d, "mail_nickname", group.MailNickname)
 	tf.Set(d, "object_id", group.ID)
 	tf.Set(d, "security_enabled", group.SecurityEnabled)
 	tf.Set(d, "types", group.GroupTypes)

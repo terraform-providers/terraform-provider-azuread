@@ -368,6 +368,7 @@ resource "azuread_group" "test" {
   display_name     = "acctestGroup-%[1]d"
   types            = ["Unified"]
   mail_enabled     = true
+  mail_nickname    = "acctestGroup-%[1]d"
   security_enabled = true
 }
 `, data.RandomInteger)
@@ -386,14 +387,14 @@ resource "azuread_user" "test" {
 }
 
 resource "azuread_group" "test" {
-  assignable_to_role = true
-  description        = "Please delete me as this is a.test.AD group!"
-  display_name       = "acctestGroup-complete-%[1]d"
-  types              = ["Unified"]
-  mail_enabled       = true
-  security_enabled   = true
-  members            = [azuread_user.test.object_id]
-  owners             = [azuread_user.test.object_id]
+  description      = "Please delete me as this is a.test.AD group!"
+  display_name     = "acctestGroup-complete-%[1]d"
+  types            = ["Unified"]
+  mail_enabled     = true
+  mail_nickname    = "acctestGroup-%[1]d"
+  security_enabled = true
+  members          = [azuread_user.test.object_id]
+  owners           = [azuread_user.test.object_id]
 }
 `, data.RandomInteger, data.RandomPassword)
 }

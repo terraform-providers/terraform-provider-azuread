@@ -75,6 +75,18 @@ func groupDataSource() *schema.Resource {
 				Computed:    true,
 			},
 
+			"mail": {
+				Description: "The SMTP address for the group",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
+			"mail_nickname": {
+				Description: "The mail alias for the group, unique in the organisation",
+				Type:        schema.TypeString,
+				Computed:    true,
+			},
+
 			"members": {
 				Description: "The object IDs of the group members",
 				Type:        schema.TypeList,
@@ -189,7 +201,9 @@ func groupDataSourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	tf.Set(d, "assignable_to_role", group.IsAssignableToRole)
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
+	tf.Set(d, "mail", group.Mail)
 	tf.Set(d, "mail_enabled", group.MailEnabled)
+	tf.Set(d, "mail_nickname", group.MailNickname)
 	tf.Set(d, "object_id", group.ID)
 	tf.Set(d, "security_enabled", group.SecurityEnabled)
 	tf.Set(d, "types", group.GroupTypes)

@@ -34,7 +34,9 @@ The following attributes are exported:
 * `description` - The optional description of the group.
 * `display_name` - The display name for the group.
 * `object_id` - The object ID of the group.
+* `mail` - The SMTP address for the group.
 * `mail_enabled` - Whether the group is mail-enabled.
+* `mail_nickname` - The mail alias for the group, unique in the organisation.
 * `members` - The object IDs of the group members.
 * `owners` - The object IDs of the group owners.
 * `security_enabled` - Whether the group is a security group.
