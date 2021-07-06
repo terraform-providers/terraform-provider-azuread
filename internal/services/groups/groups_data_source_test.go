@@ -59,14 +59,14 @@ func TestAccGroupsDataSource_noNames(t *testing.T) {
 func (GroupsDataSource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_group" "testA" {
-  display_name = "acctestGroupA-%[1]d"
+  display_name     = "acctestGroupA-%[1]d"
   security_enabled = true
 }
 
 resource "azuread_group" "testB" {
   display_name = "acctestGroupB-%[1]d"
   mail_enabled = true
-  types = ["Unified"]
+  types        = ["Unified"]
 }
 `, data.RandomInteger)
 }
