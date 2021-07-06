@@ -210,7 +210,7 @@ func applicationCertificateResourceRead(ctx context.Context, d *schema.ResourceD
 
 	tf.Set(d, "application_object_id", id.ObjectId)
 	tf.Set(d, "key_id", id.KeyId)
-	tf.Set(d, "type", string(credential.Type))
+	tf.Set(d, "type", credential.Type)
 
 	startDate := ""
 	if v := credential.StartDateTime; v != nil {

@@ -420,7 +420,7 @@ func expandApplicationAppRoles(input []interface{}) *[]msgraph.AppRole {
 
 		var allowedMemberTypes []msgraph.AppRoleAllowedMemberType
 		for _, allowedMemberType := range appRole["allowed_member_types"].(*schema.Set).List() {
-			allowedMemberTypes = append(allowedMemberTypes, msgraph.AppRoleAllowedMemberType(allowedMemberType.(string)))
+			allowedMemberTypes = append(allowedMemberTypes, allowedMemberType.(string))
 		}
 
 		newAppRole := msgraph.AppRole{
@@ -447,7 +447,7 @@ func expandApplicationGroupMembershipClaims(in []interface{}) *[]msgraph.GroupMe
 		return &result
 	}
 	for _, claimRaw := range in {
-		result = append(result, msgraph.GroupMembershipClaim(claimRaw.(string)))
+		result = append(result, claimRaw.(string))
 	}
 	return &result
 }
@@ -479,7 +479,7 @@ func expandApplicationOAuth2PermissionScope(in []interface{}) *[]msgraph.Permiss
 				AdminConsentDisplayName: utils.String(oauth2Permissions["admin_consent_display_name"].(string)),
 				ID:                      utils.String(oauth2Permissions["id"].(string)),
 				IsEnabled:               utils.Bool(oauth2Permissions["enabled"].(bool)),
-				Type:                    msgraph.PermissionScopeType(oauth2Permissions["type"].(string)),
+				Type:                    oauth2Permissions["type"].(string),
 				UserConsentDescription:  utils.String(oauth2Permissions["user_consent_description"].(string)),
 				UserConsentDisplayName:  utils.String(oauth2Permissions["user_consent_display_name"].(string)),
 				Value:                   utils.String(oauth2Permissions["value"].(string)),
@@ -575,7 +575,7 @@ func expandApplicationResourceAccess(in []interface{}) *[]msgraph.ResourceAccess
 
 		result = append(result, msgraph.ResourceAccess{
 			ID:   utils.String(resourceAccess["id"].(string)),
-			Type: msgraph.ResourceAccessType(resourceAccess["type"].(string)),
+			Type: resourceAccess["type"].(string),
 		})
 	}
 
@@ -652,17 +652,6 @@ func flattenApplicationAppRoleIDs(in *[]msgraph.AppRole) map[string]string {
 
 func flattenApplicationAppRoles(in *[]msgraph.AppRole) []map[string]interface{} {
 	return helpers.ApplicationFlattenAppRoles(in)
-}
-
-func flattenApplicationGroupMembershipClaims(in *[]msgraph.GroupMembershipClaim) []string {
-	if in == nil {
-		return nil
-	}
-	result := make([]string, 0)
-	for _, c := range *in {
-		result = append(result, string(c))
-	}
-	return result
 }
 
 func flattenApplicationImplicitGrant(in *msgraph.ImplicitGrantSettings) []map[string]interface{} {
@@ -775,7 +764,7 @@ func flattenApplicationResourceAccess(in *[]msgraph.ResourceAccess) []interface{
 		if resourceAccess.ID != nil {
 			access["id"] = *resourceAccess.ID
 		}
-		access["type"] = string(resourceAccess.Type)
+		access["type"] = resourceAccess.Type
 		accesses = append(accesses, access)
 	}
 

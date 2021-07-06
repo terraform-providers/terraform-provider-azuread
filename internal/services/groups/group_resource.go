@@ -62,17 +62,17 @@ func groupResource() *schema.Resource {
 			},
 
 			"behaviors": {
-				Description: "The group behaviors for a Microsoft 365 group",
+				Description: "The group behaviours for a Microsoft 365 group",
 				Type:        schema.TypeSet,
 				Optional:    true,
 				ForceNew:    true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						string(msgraph.GroupResourceBehaviorOptionAllowOnlyMembersToPost),
-						string(msgraph.GroupResourceBehaviorOptionHideGroupInOutlook),
-						string(msgraph.GroupResourceBehaviorOptionSubscribeNewGroupMembers),
-						string(msgraph.GroupResourceBehaviorOptionWelcomeEmailDisabled),
+						msgraph.GroupResourceBehaviorOptionAllowOnlyMembersToPost,
+						msgraph.GroupResourceBehaviorOptionHideGroupInOutlook,
+						msgraph.GroupResourceBehaviorOptionSubscribeNewGroupMembers,
+						msgraph.GroupResourceBehaviorOptionWelcomeEmailDisabled,
 					}, false),
 				},
 			},
@@ -138,7 +138,7 @@ func groupResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						string(msgraph.GroupResourceProvisioningOptionTeam),
+						msgraph.GroupResourceProvisioningOptionTeam,
 					}, false),
 				},
 			},
@@ -174,7 +174,7 @@ func groupResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						string(msgraph.GroupTypeUnified),
+						msgraph.GroupTypeUnified,
 					}, false),
 				},
 			},
@@ -185,9 +185,9 @@ func groupResource() *schema.Resource {
 				Optional:    true,
 				Computed:    true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(msgraph.GroupVisibilityHiddenMembership),
-					string(msgraph.GroupVisibilityPrivate),
-					string(msgraph.GroupVisibilityPublic),
+					msgraph.GroupVisibilityHiddenMembership,
+					msgraph.GroupVisibilityPrivate,
+					msgraph.GroupVisibilityPublic,
 				}, false),
 			},
 
@@ -277,7 +277,7 @@ func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, 
 	securityEnabled := diff.Get("security_enabled").(bool)
 	groupTypes := make([]msgraph.GroupType, 0)
 	for _, v := range diff.Get("types").(*schema.Set).List() {
-		groupTypes = append(groupTypes, msgraph.GroupType(v.(string)))
+		groupTypes = append(groupTypes, v.(string))
 	}
 	hasGroupType := func(value msgraph.GroupType) bool {
 		for _, v := range groupTypes {
@@ -319,13 +319,13 @@ func groupResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, 
 			return fmt.Errorf("`theme` is only supported for unified groups")
 		}
 
-		if visibilityNew.(string) == string(msgraph.GroupVisibilityHiddenMembership) {
+		if visibilityNew.(string) == msgraph.GroupVisibilityHiddenMembership {
 			return fmt.Errorf("`visibility` can only be %q for unified groups", msgraph.GroupVisibilityHiddenMembership)
 		}
 	}
 
-	if (visibilityOld.(string) == string(msgraph.GroupVisibilityPrivate) || visibilityOld.(string) == string(msgraph.GroupVisibilityPublic)) &&
-		visibilityNew.(string) == string(msgraph.GroupVisibilityHiddenMembership) {
+	if (visibilityOld.(string) == msgraph.GroupVisibilityPrivate || visibilityOld.(string) == msgraph.GroupVisibilityPublic) &&
+		visibilityNew.(string) == msgraph.GroupVisibilityHiddenMembership {
 		diff.ForceNew("visibility")
 	}
 
@@ -354,7 +354,7 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	groupTypes := make([]msgraph.GroupType, 0)
 	for _, v := range d.Get("types").(*schema.Set).List() {
-		groupTypes = append(groupTypes, msgraph.GroupType(v.(string)))
+		groupTypes = append(groupTypes, v.(string))
 	}
 
 	mailEnabled := d.Get("mail_enabled").(bool)
@@ -368,12 +368,12 @@ func groupResourceCreate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	behaviorOptions := make([]msgraph.GroupResourceBehaviorOption, 0)
 	for _, v := range d.Get("behaviors").(*schema.Set).List() {
-		behaviorOptions = append(behaviorOptions, msgraph.GroupResourceBehaviorOption(v.(string)))
+		behaviorOptions = append(behaviorOptions, v.(string))
 	}
 
 	provisioningOptions := make([]msgraph.GroupResourceProvisioningOption, 0)
 	for _, v := range d.Get("provisioning_options").(*schema.Set).List() {
-		provisioningOptions = append(provisioningOptions, msgraph.GroupResourceProvisioningOption(v.(string)))
+		provisioningOptions = append(provisioningOptions, v.(string))
 	}
 
 	properties := msgraph.Group{
@@ -569,7 +569,7 @@ func groupResourceRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	tf.Set(d, "assignable_to_role", group.IsAssignableToRole)
-	tf.Set(d, "behaviors", flattenGroupResourceBehaviorOptions(group.ResourceBehaviorOptions))
+	tf.Set(d, "behaviors", tf.FlattenStringSlice(group.ResourceBehaviorOptions))
 	tf.Set(d, "description", group.Description)
 	tf.Set(d, "display_name", group.DisplayName)
 	tf.Set(d, "mail_enabled", group.MailEnabled)
@@ -582,7 +582,7 @@ func groupResourceRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	tf.Set(d, "onpremises_security_identifier", group.OnPremisesSecurityIdentifier)
 	tf.Set(d, "onpremises_sync_enabled", group.OnPremisesSyncEnabled)
 	tf.Set(d, "preferred_language", group.PreferredLanguage)
-	tf.Set(d, "provisioning_options", flattenGroupResourceProvisioningOptions(group.ResourceProvisioningOptions))
+	tf.Set(d, "provisioning_options", tf.FlattenStringSlice(group.ResourceProvisioningOptions))
 	tf.Set(d, "proxy_addresses", tf.FlattenStringSlicePtr(group.ProxyAddresses))
 	tf.Set(d, "security_enabled", group.SecurityEnabled)
 	tf.Set(d, "theme", group.Theme)
