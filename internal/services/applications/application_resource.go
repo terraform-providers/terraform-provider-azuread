@@ -807,7 +807,7 @@ func applicationResourceCreate(ctx context.Context, d *schema.ResourceData, meta
 		OptionalClaims:            expandApplicationOptionalClaims(d.Get("optional_claims").([]interface{})),
 		PublicClient:              expandApplicationPublicClient(d.Get("public_client").([]interface{})),
 		RequiredResourceAccess:    expandApplicationRequiredResourceAccess(d.Get("required_resource_access").(*schema.Set).List()),
-		SignInAudience:            msgraph.SignInAudience(d.Get("sign_in_audience").(string)),
+		SignInAudience:            utils.String(d.Get("sign_in_audience").(string)),
 		Spa:                       expandApplicationSpa(d.Get("single_page_application").([]interface{})),
 		Web:                       expandApplicationWeb(d.Get("web").([]interface{})),
 	}
@@ -874,7 +874,7 @@ func applicationResourceUpdate(ctx context.Context, d *schema.ResourceData, meta
 		OptionalClaims:            expandApplicationOptionalClaims(d.Get("optional_claims").([]interface{})),
 		PublicClient:              expandApplicationPublicClient(d.Get("public_client").([]interface{})),
 		RequiredResourceAccess:    expandApplicationRequiredResourceAccess(d.Get("required_resource_access").(*schema.Set).List()),
-		SignInAudience:            msgraph.SignInAudience(d.Get("sign_in_audience").(string)),
+		SignInAudience:            utils.String(d.Get("sign_in_audience").(string)),
 		Spa:                       expandApplicationSpa(d.Get("single_page_application").([]interface{})),
 		Web:                       expandApplicationWeb(d.Get("web").([]interface{})),
 	}
@@ -929,7 +929,7 @@ func applicationResourceRead(ctx context.Context, d *schema.ResourceData, meta i
 	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient))
 	tf.Set(d, "publisher_domain", app.PublisherDomain)
 	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
-	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
+	tf.Set(d, "sign_in_audience", app.SignInAudience)
 	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa))
 	tf.Set(d, "web", flattenApplicationWeb(app.Web))
 
