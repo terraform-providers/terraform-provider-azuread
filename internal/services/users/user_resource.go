@@ -343,6 +343,14 @@ func userResourceCustomizeDiff(ctx context.Context, diff *schema.ResourceDiff, m
 	if diff.Id() == "" && diff.Get("password").(string) == "" {
 		return fmt.Errorf("`password` is required when creating a new user")
 	}
+
+	ageGroup := diff.Get("age_group").(string)
+	consentRequired := diff.Get("consent_provided_for_minor").(string)
+
+	if ageGroup != string(msgraph.AgeGroupMinor) && consentRequired != string(msgraph.ConsentProvidedForMinorNone) && consentRequired != string(msgraph.ConsentProvidedForMinorNotRequired) {
+		return fmt.Errorf("`consent_provided_for_minor` can only be set to %q or %q when `age_group` is %q or %q",
+			msgraph.ConsentProvidedForMinorGranted, msgraph.ConsentProvidedForMinorDenied, msgraph.AgeGroupAdult, msgraph.AgeGroupNotAdult)
+	}
 	return nil
 }
 
