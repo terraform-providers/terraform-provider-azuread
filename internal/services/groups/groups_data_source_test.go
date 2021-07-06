@@ -64,9 +64,10 @@ resource "azuread_group" "testA" {
 }
 
 resource "azuread_group" "testB" {
-  display_name = "acctestGroupB-%[1]d"
-  mail_enabled = true
-  types        = ["Unified"]
+  display_name  = "acctestGroupB-%[1]d"
+  mail_enabled  = true
+  mail_nickname = "acctestGroupB-%[1]d"
+  types         = ["Unified"]
 }
 `, data.RandomInteger)
 }
