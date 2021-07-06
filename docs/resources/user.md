@@ -39,8 +39,8 @@ The following arguments are supported:
 * `mail_nickname` - (Optional) The mail alias for the user. Defaults to the user name part of the user principal name (UPN).
 * `mobile_phone` - (Optional) The primary cellular telephone number for the user.
 * `office_location` - (Optional) The office location in the user's place of business.
-* `other_mails` - (Optional) A list of additional email addresses for the user.
 * `onpremises_immutable_id` - (Optional) The value used to associate an on-premise Active Directory user account with their Azure AD user object. This must be specified if you are using a federated domain for the user's `user_principal_name` property when creating a new user account.
+* `other_mails` - (Optional) A list of additional email addresses for the user.
 * `password` - (Optional) The password for the user. The password must satisfy minimum requirements as specified by the password policy. The maximum length is 256 characters. This property is required when creating a new user.
 * `postal_code` - (Optional) The postal code for the user's postal address. The postal code is specific to the user's country/region. In the United States of America, this attribute contains the ZIP code.
 * `preferred_language` - (Optional) The user's preferred language, in ISO 639-1 notation.
