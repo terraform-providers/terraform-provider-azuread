@@ -509,7 +509,7 @@ func applicationDataSourceRead(ctx context.Context, d *schema.ResourceData, meta
 	tf.Set(d, "disabled_by_microsoft", fmt.Sprintf("%v", app.DisabledByMicrosoftStatus))
 	tf.Set(d, "display_name", app.DisplayName)
 	tf.Set(d, "fallback_public_client_enabled", app.IsFallbackPublicClient)
-	tf.Set(d, "group_membership_claims", flattenApplicationGroupMembershipClaims(app.GroupMembershipClaims))
+	tf.Set(d, "group_membership_claims", tf.FlattenStringSlicePtr(app.GroupMembershipClaims))
 	tf.Set(d, "identifier_uris", tf.FlattenStringSlicePtr(app.IdentifierUris))
 	tf.Set(d, "oauth2_post_response_required", app.Oauth2RequirePostResponse)
 	tf.Set(d, "object_id", app.ID)
@@ -517,7 +517,7 @@ func applicationDataSourceRead(ctx context.Context, d *schema.ResourceData, meta
 	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient))
 	tf.Set(d, "publisher_domain", app.PublisherDomain)
 	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
-	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
+	tf.Set(d, "sign_in_audience", app.SignInAudience)
 	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa))
 	tf.Set(d, "web", flattenApplicationWeb(app.Web))
 

@@ -14,7 +14,16 @@ func (s StringNullWhenEmpty) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(s))
 }
 
-type ApplicationExtensionDataType string
+type AgeGroup = StringNullWhenEmpty
+
+const (
+	AgeGroupNone     AgeGroup = ""
+	AgeGroupAdult    AgeGroup = "Adult"
+	AgeGroupMinor    AgeGroup = "Minor"
+	AgeGroupNotAdult AgeGroup = "NotAdult"
+)
+
+type ApplicationExtensionDataType = string
 
 const (
 	ApplicationExtensionDataTypeBinary       ApplicationExtensionDataType = "Binary"
@@ -25,7 +34,7 @@ const (
 	ApplicationExtensionDataTypeString       ApplicationExtensionDataType = "String"
 )
 
-type ApplicationExtensionTargetObject string
+type ApplicationExtensionTargetObject = string
 
 const (
 	ApplicationExtensionTargetObjectApplication  ApplicationExtensionTargetObject = "Application"
@@ -35,21 +44,30 @@ const (
 	ApplicationExtensionTargetObjectUser         ApplicationExtensionTargetObject = "User"
 )
 
-type AppRoleAllowedMemberType string
+type AppRoleAllowedMemberType = string
 
 const (
 	AppRoleAllowedMemberTypeApplication AppRoleAllowedMemberType = "Application"
 	AppRoleAllowedMemberTypeUser        AppRoleAllowedMemberType = "User"
 )
 
-type BodyType string
+type BodyType = string
 
 const (
 	BodyTypeText BodyType = "text"
 	BodyTypeHtml BodyType = "html"
 )
 
-type ExtensionSchemaTargetType string
+type ConsentProvidedForMinor = StringNullWhenEmpty
+
+const (
+	ConsentProvidedForMinorNone        ConsentProvidedForMinor = ""
+	ConsentProvidedForMinorDenied      ConsentProvidedForMinor = "Denied"
+	ConsentProvidedForMinorGranted     ConsentProvidedForMinor = "Granted"
+	ConsentProvidedForMinorNotRequired ConsentProvidedForMinor = "NotRequired"
+)
+
+type ExtensionSchemaTargetType = string
 
 const (
 	ExtensionSchemaTargetTypeAdministrativeUnit ExtensionSchemaTargetType = "AdministrativeUnit"
@@ -63,7 +81,7 @@ const (
 	ExtensionSchemaTargetTypeUser               ExtensionSchemaTargetType = "User"
 )
 
-type ExtensionSchemaPropertyDataType string
+type ExtensionSchemaPropertyDataType = string
 
 const (
 	ExtensionSchemaPropertyDataBinary   ExtensionSchemaPropertyDataType = "Binary"
@@ -73,13 +91,13 @@ const (
 	ExtensionSchemaPropertyDataString   ExtensionSchemaPropertyDataType = "String"
 )
 
-type GroupType string
+type GroupType = string
 
 const (
 	GroupTypeUnified GroupType = "Unified"
 )
 
-type GroupMembershipClaim string
+type GroupMembershipClaim = string
 
 const (
 	GroupMembershipClaimAll              GroupMembershipClaim = "All"
@@ -89,35 +107,71 @@ const (
 	GroupMembershipClaimSecurityGroup    GroupMembershipClaim = "SecurityGroup"
 )
 
-type KeyCredentialType string
+type GroupResourceBehaviorOption = string
+
+const (
+	GroupResourceBehaviorOptionAllowOnlyMembersToPost   GroupResourceBehaviorOption = "AllowOnlyMembersToPost"
+	GroupResourceBehaviorOptionHideGroupInOutlook       GroupResourceBehaviorOption = "HideGroupInOutlook"
+	GroupResourceBehaviorOptionSubscribeNewGroupMembers GroupResourceBehaviorOption = "SubscribeNewGroupMembers"
+	GroupResourceBehaviorOptionWelcomeEmailDisabled     GroupResourceBehaviorOption = "WelcomeEmailDisabled"
+)
+
+type GroupResourceProvisioningOption = string
+
+const (
+	GroupResourceProvisioningOptionTeam GroupResourceProvisioningOption = "Team"
+)
+
+type GroupTheme = StringNullWhenEmpty
+
+const (
+	GroupThemeNone   GroupTheme = ""
+	GroupThemeBlue   GroupTheme = "Blue"
+	GroupThemeGreen  GroupTheme = "Green"
+	GroupThemeOrange GroupTheme = "Orange"
+	GroupThemePink   GroupTheme = "Pink"
+	GroupThemePurple GroupTheme = "Purple"
+	GroupThemeRed    GroupTheme = "Red"
+	GroupThemeTeal   GroupTheme = "Teal"
+)
+
+type GroupVisibility = string
+
+const (
+	GroupVisibilityHiddenMembership GroupVisibility = "Hiddenmembership"
+	GroupVisibilityPrivate          GroupVisibility = "Private"
+	GroupVisibilityPublic           GroupVisibility = "Public"
+)
+
+type KeyCredentialType = string
 
 const (
 	KeyCredentialTypeAsymmetricX509Cert  KeyCredentialType = "AsymmetricX509Cert"
 	KeyCredentialTypeX509CertAndPassword KeyCredentialType = "X509CertAndPassword"
 )
 
-type KeyCredentialUsage string
+type KeyCredentialUsage = string
 
 const (
 	KeyCredentialUsageSign   KeyCredentialUsage = "Sign"
 	KeyCredentialUsageVerify KeyCredentialUsage = "Verify"
 )
 
-type PermissionScopeType string
+type PermissionScopeType = string
 
 const (
 	PermissionScopeTypeAdmin PermissionScopeType = "Admin"
 	PermissionScopeTypeUser  PermissionScopeType = "User"
 )
 
-type ResourceAccessType string
+type ResourceAccessType = string
 
 const (
 	ResourceAccessTypeRole  ResourceAccessType = "Role"
 	ResourceAccessTypeScope ResourceAccessType = "Scope"
 )
 
-type SignInAudience string
+type SignInAudience = string
 
 const (
 	SignInAudienceAzureADMyOrg                       SignInAudience = "AzureADMyOrg"

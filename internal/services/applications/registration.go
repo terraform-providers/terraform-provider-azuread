@@ -28,8 +28,9 @@ func (r Registration) SupportedDataSources() map[string]*schema.Resource {
 // SupportedResources returns the supported Resources supported by this Service
 func (r Registration) SupportedResources() map[string]*schema.Resource {
 	return map[string]*schema.Resource{
-		"azuread_application":             applicationResource(),
-		"azuread_application_certificate": applicationCertificateResource(),
-		"azuread_application_password":    applicationPasswordResource(),
+		"azuread_application":                applicationResource(),
+		"azuread_application_certificate":    applicationCertificateResource(),
+		"azuread_application_password":       applicationPasswordResource(),
+		"azuread_application_pre_authorized": applicationPreAuthorizedResource(),
 	}
 }

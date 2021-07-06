@@ -104,8 +104,8 @@ func servicePrincipalCertificateResource() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(msgraph.KeyCredentialTypeAsymmetricX509Cert),
-					string(msgraph.KeyCredentialTypeX509CertAndPassword),
+					msgraph.KeyCredentialTypeAsymmetricX509Cert,
+					msgraph.KeyCredentialTypeX509CertAndPassword,
 				}, false),
 			},
 
@@ -210,7 +210,7 @@ func servicePrincipalCertificateResourceRead(ctx context.Context, d *schema.Reso
 
 	tf.Set(d, "service_principal_id", id.ObjectId)
 	tf.Set(d, "key_id", id.KeyId)
-	tf.Set(d, "type", string(credential.Type))
+	tf.Set(d, "type", credential.Type)
 
 	startDate := ""
 	if v := credential.StartDateTime; v != nil {

@@ -14,10 +14,11 @@ type GroupsDataSource struct{}
 
 func TestAccGroupsDataSource_byDisplayNames(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azuread_groups", "test")
+	r := GroupsDataSource{}
 
 	data.DataSourceTest(t, []resource.TestStep{
 		{
-			Config: GroupsDataSource{}.byDisplayNames(data),
+			Config: r.byDisplayNames(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).Key("display_names.#").HasValue("2"),
 				check.That(data.ResourceName).Key("object_ids.#").HasValue("2"),
@@ -28,10 +29,11 @@ func TestAccGroupsDataSource_byDisplayNames(t *testing.T) {
 
 func TestAccGroupsDataSource_byObjectIds(t *testing.T) {
 	data := acceptance.BuildTestData(t, "data.azuread_groups", "test")
+	r := GroupsDataSource{}
 
 	data.DataSourceTest(t, []resource.TestStep{
 		{
-			Config: GroupsDataSource{}.byObjectIds(data),
+			Config: r.byObjectIds(data),
 			Check: resource.ComposeTestCheckFunc(
 				check.That(data.ResourceName).Key("display_names.#").HasValue("2"),
 				check.That(data.ResourceName).Key("object_ids.#").HasValue("2"),
@@ -57,33 +59,37 @@ func TestAccGroupsDataSource_noNames(t *testing.T) {
 func (GroupsDataSource) template(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_group" "testA" {
-  name = "acctestGroupA-%[1]d"
+  display_name     = "acctestGroupA-%[1]d"
+  security_enabled = true
 }
 
 resource "azuread_group" "testB" {
-  name = "acctestGroupB-%[1]d"
+  display_name  = "acctestGroupB-%[1]d"
+  mail_enabled  = true
+  mail_nickname = "acctestGroupB-%[1]d"
+  types         = ["Unified"]
 }
 `, data.RandomInteger)
 }
 
-func (GroupsDataSource) byDisplayNames(data acceptance.TestData) string {
+func (r GroupsDataSource) byDisplayNames(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %[1]s
 
 data "azuread_groups" "test" {
-  display_names = [azuread_group.testA.name, azuread_group.testB.name]
+  display_names = [azuread_group.testA.display_name, azuread_group.testB.display_name]
 }
-`, GroupsDataSource{}.template(data))
+`, r.template(data))
 }
 
-func (GroupsDataSource) byObjectIds(data acceptance.TestData) string {
+func (r GroupsDataSource) byObjectIds(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 %[1]s
 
 data "azuread_groups" "test" {
   object_ids = [azuread_group.testA.object_id, azuread_group.testB.object_id]
 }
-`, GroupsDataSource{}.template(data))
+`, r.template(data))
 }
 
 func (GroupsDataSource) noNames() string {

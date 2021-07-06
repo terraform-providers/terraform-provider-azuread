@@ -137,30 +137,40 @@ data "azuread_domains" "test" {
 
 resource "azuread_user" "test" {
   user_principal_name = "acctestUser.%[1]d@${data.azuread_domains.test.domains.0.domain_name}"
+  mail                = "acctestUser.%[1]d@hashicorp.biz"
   mail_nickname       = "acctestUser-%[1]d-MailNickname"
-  account_enabled     = false
-  usage_location      = "NO"
+  other_mails         = ["acctestUser.%[1]d@hashicorp.net", "acctestUser.%[1]d@hashicorp.org"]
+
+  account_enabled         = false
+  onpremises_immutable_id = "%[1]d"
+  usage_location          = "NO"
 
   password              = "%[2]s"
   force_password_change = true
 
-  display_name    = "acctestUser-%[1]d-DisplayName"
-  given_name      = "acctestUser-%[1]d-GivenName"
-  surname         = "acctestUser-%[1]d-Surname"
-  job_title       = "acctestUser-%[1]d-Job"
-  office_location = "acctestUser-%[1]d-OfficeLocation"
-  department      = "acctestUser-%[1]d-Dept"
-  company_name    = "acctestUser-%[1]d-Company"
-  street_address  = "acctestUser-%[1]d-Street"
-  state           = "acctestUser-%[1]d-State"
-  city            = "acctestUser-%[1]d-City"
-  country         = "acctestUser-%[1]d-Country"
-  postal_code     = "111111"
-  mobile_phone    = "(555) 555-5555"
+  age_group                  = "NotAdult"
+  business_phones            = ["12345678901"]
+  company_name               = "acctestUser-%[1]d-Company"
+  consent_provided_for_minor = "NotRequired"
+  department                 = "acctestUser-%[1]d-Dept"
+  display_name               = "acctestUser-%[1]d-DisplayName"
+  employee_id                = "%[3]s%[3]s"
+  fax_number                 = "(555) 555-5555"
+  given_name                 = "acctestUser-%[1]d-GivenName"
+  job_title                  = "acctestUser-%[1]d-Job"
+  mobile_phone               = "(555) 555-5555"
+  office_location            = "acctestUser-%[1]d-OfficeLocation"
+  preferred_language         = "es-CO"
+  show_in_address_list       = false
+  surname                    = "acctestUser-%[1]d-Surname"
 
-  onpremises_immutable_id = "%[1]d"
+  street_address = "acctestUser-%[1]d-Street"
+  state          = "acctestUser-%[1]d-State"
+  city           = "acctestUser-%[1]d-City"
+  country        = "acctestUser-%[1]d-Country"
+  postal_code    = "111111"
 }
-`, data.RandomInteger, data.RandomPassword)
+`, data.RandomInteger, data.RandomPassword, data.RandomString)
 }
 
 func (UserResource) threeUsersABC(data acceptance.TestData) string {

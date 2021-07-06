@@ -118,10 +118,10 @@ func applicationResource() *schema.Resource {
 										Description: "Whether this delegated permission should be considered safe for non-admin users to consent to on behalf of themselves, or whether an administrator should be required for consent to the permissions",
 										Type:        schema.TypeString,
 										Optional:    true,
-										Default:     string(msgraph.PermissionScopeTypeUser),
+										Default:     msgraph.PermissionScopeTypeUser,
 										ValidateFunc: validation.StringInSlice([]string{
-											string(msgraph.PermissionScopeTypeAdmin),
-											string(msgraph.PermissionScopeTypeUser),
+											msgraph.PermissionScopeTypeAdmin,
+											msgraph.PermissionScopeTypeUser,
 										}, false),
 									},
 
@@ -199,8 +199,8 @@ func applicationResource() *schema.Resource {
 								Type: schema.TypeString,
 								ValidateFunc: validation.StringInSlice(
 									[]string{
-										string(msgraph.AppRoleAllowedMemberTypeApplication),
-										string(msgraph.AppRoleAllowedMemberTypeUser),
+										msgraph.AppRoleAllowedMemberTypeApplication,
+										msgraph.AppRoleAllowedMemberTypeUser,
 									}, false,
 								),
 							},
@@ -265,11 +265,11 @@ func applicationResource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice([]string{
-						string(msgraph.GroupMembershipClaimAll),
-						string(msgraph.GroupMembershipClaimNone),
-						string(msgraph.GroupMembershipClaimApplicationGroup),
-						string(msgraph.GroupMembershipClaimDirectoryRole),
-						string(msgraph.GroupMembershipClaimSecurityGroup),
+						msgraph.GroupMembershipClaimAll,
+						msgraph.GroupMembershipClaimNone,
+						msgraph.GroupMembershipClaimApplicationGroup,
+						msgraph.GroupMembershipClaimDirectoryRole,
+						msgraph.GroupMembershipClaimSecurityGroup,
 					}, false),
 				},
 			},
@@ -387,8 +387,8 @@ func applicationResource() *schema.Resource {
 										Required:    true,
 										ValidateFunc: validation.StringInSlice(
 											[]string{
-												string(msgraph.ResourceAccessTypeRole),
-												string(msgraph.ResourceAccessTypeScope),
+												msgraph.ResourceAccessTypeRole,
+												msgraph.ResourceAccessTypeScope,
 											},
 											false, // force case sensitivity
 										),
@@ -404,12 +404,12 @@ func applicationResource() *schema.Resource {
 				Description: "The Microsoft account types that are supported for the current application",
 				Type:        schema.TypeString,
 				Optional:    true,
-				Default:     string(msgraph.SignInAudienceAzureADMyOrg),
+				Default:     msgraph.SignInAudienceAzureADMyOrg,
 				ValidateFunc: validation.StringInSlice([]string{
-					string(msgraph.SignInAudienceAzureADMyOrg),
-					string(msgraph.SignInAudienceAzureADMultipleOrgs),
-					string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount),
-					string(msgraph.SignInAudiencePersonalMicrosoftAccount),
+					msgraph.SignInAudienceAzureADMyOrg,
+					msgraph.SignInAudienceAzureADMultipleOrgs,
+					msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount,
+					msgraph.SignInAudiencePersonalMicrosoftAccount,
 				}, false),
 			},
 
@@ -468,7 +468,7 @@ func applicationResource() *schema.Resource {
 						},
 
 						"redirect_uris": {
-							Description: "The URL that will be used by Microsoft's authorization service to sign out a user using front-channel, back-channel or SAML logout protocols",
+							Description: "The URLs where user tokens are sent for sign-in, or the redirect URIs where OAuth 2.0 authorization codes and access tokens are sent",
 							Type:        schema.TypeSet,
 							Optional:    true,
 							MaxItems:    256,
@@ -581,7 +581,7 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 	// The following validation is taken from https://docs.microsoft.com/en-gb/azure/active-directory/develop/supported-accounts-validation
 	// These apply only when personal account sign-ins are enabled for an application, and are enforced at plan time to avoid breaking existing
 	// applications that change from AAD (corporate) account sign-ins to personal account sign-ins
-	if s := diff.Get("sign_in_audience").(string); s == string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount) || s == string(msgraph.SignInAudiencePersonalMicrosoftAccount) {
+	if s := diff.Get("sign_in_audience").(string); s == msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount || s == msgraph.SignInAudiencePersonalMicrosoftAccount {
 		oauth2PermissionScopes := diff.Get("api.0.oauth2_permission_scope").(*schema.Set).List()
 		identifierUris := diff.Get("identifier_uris").([]interface{})
 		pubRedirectUris := diff.Get("public_client.0.redirect_uris").(*schema.Set).List()
@@ -592,13 +592,13 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 		// applications must use v2 access tokens with personal account sign-ins
 		if v, ok := diff.GetOk("api.0.requested_access_token_version"); !ok || v.(int) == 1 {
 			return fmt.Errorf("`requested_access_token_version` must be 2 when `sign_in_audience` is %q or %q",
-				string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+				msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 		}
 
 		// maximum number of scopes is 100 with personal account sign-ins
 		if len(oauth2PermissionScopes) > 100 {
 			return fmt.Errorf("maximum of 100 `oauth2_permission_scope` blocks are supported when `sign_in_audience` is %q or %q",
-				string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+				msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 		}
 
 		// scope name maximum length is 40 characters with personal account sign-ins
@@ -607,7 +607,7 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 			if v, ok := scope["value"]; ok {
 				if len(v.(string)) > 40 {
 					return fmt.Errorf("`value` property in the `oauth2_permission_scope` block must be 40 characters or less when `sign_in_audience` is %q or %q",
-						string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+						msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 				}
 			}
 		}
@@ -616,20 +616,20 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 		for _, v := range identifierUris {
 			if diags := validate.IsURIFunc([]string{"http", "https", "api", "ms-appx"}, false, false)(v, cty.Path{}); diags.HasError() {
 				return fmt.Errorf("`identifier_uris` is invalid. The URN scheme is not supported when `sign_in_audience` is %q or %q",
-					string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+					msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 			}
 		}
 
 		// maximum of 50 identifier_uris with personal account sign-ins
 		if len(identifierUris) > 50 {
 			return fmt.Errorf("`identifier_uris` must have no more than 50 URIs when `sign_in_audience` is %q or %q",
-				string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+				msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 		}
 
 		// maximum of 100 redirect URIs are supported with personal account sign-ins
 		if len(pubRedirectUris) > 100 || len(spaRedirectUris) > 100 || len(webRedirectUris) > 100 {
 			return fmt.Errorf("`redirect_uris` must have no more than 100 URIs when `sign_in_audience` is %q or %q",
-				string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+				msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 		}
 
 		// redirect URIs containing wildcards not supported with personal account sign-ins
@@ -638,7 +638,7 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 			if err == nil {
 				if strings.Contains(u.Host, "*") {
 					return fmt.Errorf("`redirect_uris` having wildcard hosts are not supported when `sign_in_audience` is %q or %q",
-						string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+						msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 				}
 			}
 		}
@@ -650,7 +650,7 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 		requiredResourceAccess := diff.Get("required_resource_access").(*schema.Set).List()
 		if len(requiredResourceAccess) > 50 {
 			return fmt.Errorf("maximum of 50 `required_resource_access` blocks are supported when `sign_in_audience` is %q or %q",
-				string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+				msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 		}
 		totalPermissions := 0
 		for _, raw := range requiredResourceAccess {
@@ -659,12 +659,12 @@ func applicationResourceCustomizeDiff(ctx context.Context, diff *schema.Resource
 				permissionCount := len(resourceAccess.([]interface{}))
 				if permissionCount > 30 {
 					return fmt.Errorf("maximum of 30 `resource_access` blocks for each `required_resource_access` block are supported when `sign_in_audience` is %q or %q",
-						string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+						msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 				}
 				totalPermissions += permissionCount
 				if totalPermissions > 200 {
 					return fmt.Errorf("maximum of 30 `resource_access` blocks per application are supported when `sign_in_audience` is %q or %q",
-						string(msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount), string(msgraph.SignInAudiencePersonalMicrosoftAccount))
+						msgraph.SignInAudienceAzureADandPersonalMicrosoftAccount, msgraph.SignInAudiencePersonalMicrosoftAccount)
 				}
 			}
 		}
@@ -807,7 +807,7 @@ func applicationResourceCreate(ctx context.Context, d *schema.ResourceData, meta
 		OptionalClaims:            expandApplicationOptionalClaims(d.Get("optional_claims").([]interface{})),
 		PublicClient:              expandApplicationPublicClient(d.Get("public_client").([]interface{})),
 		RequiredResourceAccess:    expandApplicationRequiredResourceAccess(d.Get("required_resource_access").(*schema.Set).List()),
-		SignInAudience:            msgraph.SignInAudience(d.Get("sign_in_audience").(string)),
+		SignInAudience:            utils.String(d.Get("sign_in_audience").(string)),
 		Spa:                       expandApplicationSpa(d.Get("single_page_application").([]interface{})),
 		Web:                       expandApplicationWeb(d.Get("web").([]interface{})),
 	}
@@ -874,7 +874,7 @@ func applicationResourceUpdate(ctx context.Context, d *schema.ResourceData, meta
 		OptionalClaims:            expandApplicationOptionalClaims(d.Get("optional_claims").([]interface{})),
 		PublicClient:              expandApplicationPublicClient(d.Get("public_client").([]interface{})),
 		RequiredResourceAccess:    expandApplicationRequiredResourceAccess(d.Get("required_resource_access").(*schema.Set).List()),
-		SignInAudience:            msgraph.SignInAudience(d.Get("sign_in_audience").(string)),
+		SignInAudience:            utils.String(d.Get("sign_in_audience").(string)),
 		Spa:                       expandApplicationSpa(d.Get("single_page_application").([]interface{})),
 		Web:                       expandApplicationWeb(d.Get("web").([]interface{})),
 	}
@@ -921,7 +921,7 @@ func applicationResourceRead(ctx context.Context, d *schema.ResourceData, meta i
 	tf.Set(d, "disabled_by_microsoft", fmt.Sprintf("%v", app.DisabledByMicrosoftStatus))
 	tf.Set(d, "display_name", app.DisplayName)
 	tf.Set(d, "fallback_public_client_enabled", app.IsFallbackPublicClient)
-	tf.Set(d, "group_membership_claims", flattenApplicationGroupMembershipClaims(app.GroupMembershipClaims))
+	tf.Set(d, "group_membership_claims", tf.FlattenStringSlicePtr(app.GroupMembershipClaims))
 	tf.Set(d, "identifier_uris", tf.FlattenStringSlicePtr(app.IdentifierUris))
 	tf.Set(d, "oauth2_post_response_required", app.Oauth2RequirePostResponse)
 	tf.Set(d, "object_id", app.ID)
@@ -929,7 +929,7 @@ func applicationResourceRead(ctx context.Context, d *schema.ResourceData, meta i
 	tf.Set(d, "public_client", flattenApplicationPublicClient(app.PublicClient))
 	tf.Set(d, "publisher_domain", app.PublisherDomain)
 	tf.Set(d, "required_resource_access", flattenApplicationRequiredResourceAccess(app.RequiredResourceAccess))
-	tf.Set(d, "sign_in_audience", string(app.SignInAudience))
+	tf.Set(d, "sign_in_audience", app.SignInAudience)
 	tf.Set(d, "single_page_application", flattenApplicationSpa(app.Spa))
 	tf.Set(d, "web", flattenApplicationWeb(app.Web))
 
