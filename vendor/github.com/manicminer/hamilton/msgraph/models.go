@@ -62,7 +62,7 @@ type Application struct {
 	PublicClient                  *PublicClient             `json:"publicClient,omitempty"`
 	PublisherDomain               *string                   `json:"publisherDomain,omitempty"`
 	RequiredResourceAccess        *[]RequiredResourceAccess `json:"requiredResourceAccess,omitempty"`
-	SignInAudience                SignInAudience            `json:"signInAudience,omitempty"`
+	SignInAudience                *SignInAudience           `json:"signInAudience,omitempty"`
 	Spa                           *ApplicationSpa           `json:"spa,omitempty"`
 	Tags                          *[]string                 `json:"tags,omitempty"`
 	TokenEncryptionKeyId          *string                   `json:"tokenEncryptionKeyId,omitempty"`
@@ -870,7 +870,7 @@ type ServicePrincipal struct {
 	SamlSingleSignOnSettings            *SamlSingleSignOnSettings     `json:"samlSingleSignOnSettings,omitempty"`
 	ServicePrincipalNames               *[]string                     `json:"servicePrincipalNames,omitempty"`
 	ServicePrincipalType                *string                       `json:"servicePrincipalType,omitempty"`
-	SignInAudience                      SignInAudience                `json:"signInAudience,omitempty"`
+	SignInAudience                      *SignInAudience               `json:"signInAudience,omitempty"`
 	Tags                                *[]string                     `json:"tags,omitempty"`
 	TokenEncryptionKeyId                *string                       `json:"tokenEncryptionKeyId,omitempty"`
 	VerifiedPublisher                   *VerifiedPublisher            `json:"verifiedPublisher,omitempty"`
@@ -950,63 +950,65 @@ type TargetResource struct {
 
 // User describes a User object.
 type User struct {
-	ID                              *string              `json:"id,omitempty"`
-	AboutMe                         *string              `json:"aboutMe,omitempty"`
-	AccountEnabled                  *bool                `json:"accountEnabled,omitempty"`
-	BusinessPhones                  *[]string            `json:"businessPhones,omitempty"`
-	City                            *StringNullWhenEmpty `json:"city,omitempty"`
-	CompanyName                     *StringNullWhenEmpty `json:"companyName,omitempty"`
-	Country                         *StringNullWhenEmpty `json:"country,omitempty"`
-	CreatedDateTime                 *time.Time           `json:"createdDateTime,omitempty"`
-	CreationType                    *string              `json:"creationType,omitempty"`
-	DeletedDateTime                 *time.Time           `json:"deletedDateTime,omitempty"`
-	Department                      *StringNullWhenEmpty `json:"department,omitempty"`
-	DisplayName                     *string              `json:"displayName,omitempty"`
-	EmployeeHireDate                *time.Time           `json:"employeeHireDate,omitempty"`
-	EmployeeId                      *string              `json:"employeeId,omitempty"`
-	EmployeeType                    *string              `json:"employeeType,omitempty"`
-	ExternalUserState               *string              `json:"externalUserState,omitempty"`
-	FaxNumber                       *string              `json:"faxNumber,omitempty"`
-	GivenName                       *StringNullWhenEmpty `json:"givenName,omitempty"`
-	ImAddresses                     *[]string            `json:"imAddresses,omitempty"`
-	Interests                       *[]string            `json:"interests,omitempty"`
-	IsManagementRestricted          *bool                `json:"isManagementRestricted,omitempty"`
-	IsResourceAccount               *bool                `json:"isResourceAccount,omitempty"`
-	JobTitle                        *StringNullWhenEmpty `json:"jobTitle,omitempty"`
-	Mail                            *string              `json:"mail,omitempty"`
-	MailNickname                    *string              `json:"mailNickname,omitempty"`
-	MobilePhone                     *StringNullWhenEmpty `json:"mobilePhone,omitempty"`
-	MySite                          *string              `json:"mySite,omitempty"`
-	OfficeLocation                  *StringNullWhenEmpty `json:"officeLocation,omitempty"`
-	OnPremisesDistinguishedName     *string              `json:"onPremisesDistinguishedName,omitempty"`
-	OnPremisesDomainName            *string              `json:"onPremisesDomainName,omitempty"`
-	OnPremisesImmutableId           *string              `json:"onPremisesImmutableId,omitempty"`
-	OnPremisesLastSyncDateTime      *string              `json:"onPremisesLastSyncDateTime,omitempty"`
-	OnPremisesSamAccountName        *string              `json:"onPremisesSamAccountName,omitempty"`
-	OnPremisesSecurityIdentifier    *string              `json:"onPremisesSecurityIdentifier,omitempty"`
-	OnPremisesSyncEnabled           *bool                `json:"onPremisesSyncEnabled,omitempty"`
-	OnPremisesUserPrincipalName     *string              `json:"onPremisesUserPrincipalName,omitempty"`
-	OtherMails                      *[]string            `json:"otherMails,omitempty"`
-	PasswordPolicies                *string              `json:"passwordPolicies,omitempty"`
-	PastProjects                    *[]string            `json:"pastProjects,omitempty"`
-	PostalCode                      *StringNullWhenEmpty `json:"postalCode,omitempty"`
-	PreferredDataLocation           *string              `json:"preferredDataLocation,omitempty"`
-	PreferredLanguage               *string              `json:"preferredLanguage,omitempty"`
-	PreferredName                   *string              `json:"preferredName,omitempty"`
-	ProxyAddresses                  *[]string            `json:"proxyAddresses,omitempty"`
-	RefreshTokensValidFromDateTime  *time.Time           `json:"refreshTokensValidFromDateTime,omitempty"`
-	Responsibilities                *[]string            `json:"responsibilities,omitempty"`
-	Schools                         *[]string            `json:"schools,omitempty"`
-	ShowInAddressList               *bool                `json:"showInAddressList,omitempty"`
-	SignInActivity                  *SignInActivity      `json:"signInActivity,omitempty"`
-	SignInSessionsValidFromDateTime *time.Time           `json:"signInSessionsValidFromDateTime,omitempty"`
-	Skills                          *[]string            `json:"skills,omitempty"`
-	State                           *StringNullWhenEmpty `json:"state,omitempty"`
-	StreetAddress                   *StringNullWhenEmpty `json:"streetAddress,omitempty"`
-	Surname                         *StringNullWhenEmpty `json:"surname,omitempty"`
-	UsageLocation                   *StringNullWhenEmpty `json:"usageLocation,omitempty"`
-	UserPrincipalName               *string              `json:"userPrincipalName,omitempty"`
-	UserType                        *string              `json:"userType,omitempty"`
+	ID                              *string                  `json:"id,omitempty"`
+	AboutMe                         *string                  `json:"aboutMe,omitempty"`
+	AccountEnabled                  *bool                    `json:"accountEnabled,omitempty"`
+	AgeGroup                        *AgeGroup                `json:"ageGroup,omitempty"`
+	BusinessPhones                  *[]string                `json:"businessPhones,omitempty"`
+	City                            *StringNullWhenEmpty     `json:"city,omitempty"`
+	CompanyName                     *StringNullWhenEmpty     `json:"companyName,omitempty"`
+	ConsentProvidedForMinor         *ConsentProvidedForMinor `json:"consentProvidedForMinor,omitempty"`
+	Country                         *StringNullWhenEmpty     `json:"country,omitempty"`
+	CreatedDateTime                 *time.Time               `json:"createdDateTime,omitempty"`
+	CreationType                    *string                  `json:"creationType,omitempty"`
+	DeletedDateTime                 *time.Time               `json:"deletedDateTime,omitempty"`
+	Department                      *StringNullWhenEmpty     `json:"department,omitempty"`
+	DisplayName                     *string                  `json:"displayName,omitempty"`
+	EmployeeHireDate                *time.Time               `json:"employeeHireDate,omitempty"`
+	EmployeeId                      *StringNullWhenEmpty     `json:"employeeId,omitempty"`
+	EmployeeType                    *string                  `json:"employeeType,omitempty"`
+	ExternalUserState               *string                  `json:"externalUserState,omitempty"`
+	FaxNumber                       *StringNullWhenEmpty     `json:"faxNumber,omitempty"`
+	GivenName                       *StringNullWhenEmpty     `json:"givenName,omitempty"`
+	ImAddresses                     *[]string                `json:"imAddresses,omitempty"`
+	Interests                       *[]string                `json:"interests,omitempty"`
+	IsManagementRestricted          *bool                    `json:"isManagementRestricted,omitempty"`
+	IsResourceAccount               *bool                    `json:"isResourceAccount,omitempty"`
+	JobTitle                        *StringNullWhenEmpty     `json:"jobTitle,omitempty"`
+	Mail                            *StringNullWhenEmpty     `json:"mail,omitempty"`
+	MailNickname                    *string                  `json:"mailNickname,omitempty"`
+	MobilePhone                     *StringNullWhenEmpty     `json:"mobilePhone,omitempty"`
+	MySite                          *string                  `json:"mySite,omitempty"`
+	OfficeLocation                  *StringNullWhenEmpty     `json:"officeLocation,omitempty"`
+	OnPremisesDistinguishedName     *string                  `json:"onPremisesDistinguishedName,omitempty"`
+	OnPremisesDomainName            *string                  `json:"onPremisesDomainName,omitempty"`
+	OnPremisesImmutableId           *string                  `json:"onPremisesImmutableId,omitempty"`
+	OnPremisesLastSyncDateTime      *string                  `json:"onPremisesLastSyncDateTime,omitempty"`
+	OnPremisesSamAccountName        *string                  `json:"onPremisesSamAccountName,omitempty"`
+	OnPremisesSecurityIdentifier    *string                  `json:"onPremisesSecurityIdentifier,omitempty"`
+	OnPremisesSyncEnabled           *bool                    `json:"onPremisesSyncEnabled,omitempty"`
+	OnPremisesUserPrincipalName     *string                  `json:"onPremisesUserPrincipalName,omitempty"`
+	OtherMails                      *[]string                `json:"otherMails,omitempty"`
+	PasswordPolicies                *string                  `json:"passwordPolicies,omitempty"`
+	PastProjects                    *[]string                `json:"pastProjects,omitempty"`
+	PostalCode                      *StringNullWhenEmpty     `json:"postalCode,omitempty"`
+	PreferredDataLocation           *string                  `json:"preferredDataLocation,omitempty"`
+	PreferredLanguage               *StringNullWhenEmpty     `json:"preferredLanguage,omitempty"`
+	PreferredName                   *string                  `json:"preferredName,omitempty"`
+	ProxyAddresses                  *[]string                `json:"proxyAddresses,omitempty"`
+	RefreshTokensValidFromDateTime  *time.Time               `json:"refreshTokensValidFromDateTime,omitempty"`
+	Responsibilities                *[]string                `json:"responsibilities,omitempty"`
+	Schools                         *[]string                `json:"schools,omitempty"`
+	ShowInAddressList               *bool                    `json:"showInAddressList,omitempty"`
+	SignInActivity                  *SignInActivity          `json:"signInActivity,omitempty"`
+	SignInSessionsValidFromDateTime *time.Time               `json:"signInSessionsValidFromDateTime,omitempty"`
+	Skills                          *[]string                `json:"skills,omitempty"`
+	State                           *StringNullWhenEmpty     `json:"state,omitempty"`
+	StreetAddress                   *StringNullWhenEmpty     `json:"streetAddress,omitempty"`
+	Surname                         *StringNullWhenEmpty     `json:"surname,omitempty"`
+	UsageLocation                   *StringNullWhenEmpty     `json:"usageLocation,omitempty"`
+	UserPrincipalName               *string                  `json:"userPrincipalName,omitempty"`
+	UserType                        *string                  `json:"userType,omitempty"`
 
 	PasswordProfile *UserPasswordProfile `json:"passwordProfile,omitempty"`
 }
