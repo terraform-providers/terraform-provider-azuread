@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -58,27 +59,26 @@ func TestAccInvitation_complete(t *testing.T) {
 }
 
 func (r InvitationResource) Exists(ctx context.Context, clients *clients.Client, state *terraform.InstanceState) (*bool, error) {
-	var id *string
+	time.Sleep(time.Second * 10)
 
 	userID := state.Attributes["user_id"]
 
-	user, status, err := clients.Users.MsClient.Get(ctx, userID)
+	user, status, err := clients.Users.UsersClient.Get(ctx, userID)
 	if err != nil {
 		if status == http.StatusNotFound {
 			return nil, fmt.Errorf("User with object ID %q does not exist", userID)
 		}
 		return nil, fmt.Errorf("failed to retrieve User with object ID %q: %+v", userID, err)
 	}
-	id = user.ID
 
-	return utils.Bool(id != nil && *id == userID), nil
+	return utils.Bool(user.ID != nil && *user.ID == userID), nil
 }
 
 func (InvitationResource) basic(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_invitation" "test" {
-	user_email_address = "test-user-%s@test.com"
-	redirect_url       = "https://portal.azure.com"
+  user_email_address = "test-user-%s@test.com"
+  redirect_url       = "https://portal.azure.com"
 }
 `, data.RandomString)
 }
@@ -86,18 +86,18 @@ resource "azuread_invitation" "test" {
 func (InvitationResource) complete(data acceptance.TestData) string {
 	return fmt.Sprintf(`
 resource "azuread_invitation" "test" {
-	user_email_address = "test-user-%s@test.com"
-	redirect_url       = "https://portal.azure.com"
+  user_email_address = "test-user-%s@test.com"
+  redirect_url       = "https://portal.azure.com"
 
-	user_display_name = "Test user"
+  user_display_name = "Test user"
 
-	send_invitation_message = true
+  send_invitation_message = true
 
-	user_message_info {
-		cc_recipients           = ["test-user-%s@test.com"]
-		customized_message_body = "Hello there! You are invited to join my Azure tenant."
-		message_language        = "en-US"
-	}
+  user_message_info {
+    cc_recipients           = ["test-user-%s@test.com"]
+    customised_message_body = "Hello there! You are invited to join my Azure tenant."
+    message_language        = "en-US"
+  }
 }
 `, data.RandomString, data.RandomString)
 }

@@ -31,7 +31,7 @@ resource "azuread_invitation" "example" {
 
   user_message_info {
     cc_recipients           = ["aaliceberg@hashicorp.com"]
-    customized_message_body = "Hello there! You are invited to join my Azure tenant !"
+    customised_message_body = "Hello there! You are invited to join my Azure tenant !"
     message_language        = "en-US"
   }
 }
@@ -42,7 +42,7 @@ resource "azuread_invitation" "example" {
 The following arguments are supported:
 
 * `redirect_url` - (Required) URL the user should be redirected to once the invitation is redeemed.
-* `send_invitation_message` - (Optional) If `true`, an email wille be sent to the user being invited. Must be set to `true` if a `user_message_info` block is specified. Defaults to `false`.
+* `send_invitation_message` - (Optional) If `true`, an email will be sent to the user being invited. Must be set to `true` if a `user_message_info` block is specified. Defaults to `false`.
 * `user_display_name` - (Optional) Display name of the user being invited.
 * `user_email_address` - (Required) Email address of the user being invited.
 * `user_message_info` - (Optional) A `user_message_info` block as documented below, which configures the message being sent to the invited user. `send_invitation_message` must be set to `true` if this block is specified.
@@ -52,7 +52,7 @@ The following arguments are supported:
 `user_message_info` block supports the following:
 
 * `cc_recipients` - (Optional) Additional recipients the invitation message should be sent to. Currently only 1 additional recipient is supported by Azure.
-* `customized_message_body` - (Optional) Customized message body you want to send if you don't want the default message.
+* `customised_message_body` - (Optional) Customised message body you want to send if you don't want the default message.
 * `message_language` - (Optional) Language the message will be sent in. The value specified must be in ISO 639 format. Defaults to `en-US`.
 
 
